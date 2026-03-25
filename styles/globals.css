@@ -1,0 +1,619 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* iOS Blue Primary */
+  --color-primary: #007AFF;
+  --color-primary-light: #5AC8FA;
+  --color-primary-bg: #E8F4FD;
+  --color-primary-dark: #0056CC;
+
+  /* Legacy red aliases for gradual migration */
+  --color-red: #007AFF;
+  --color-red-light: #5AC8FA;
+  --color-red-bg: #E8F4FD;
+
+  /* iOS System Colors */
+  --color-bg: #F2F2F7;
+  --color-surface: #FFFFFF;
+  --color-surface-2: rgba(118, 118, 128, 0.08);
+  --color-surface-elevated: rgba(255, 255, 255, 0.95);
+  --color-border: rgba(60, 60, 67, 0.12);
+  --color-border-strong: rgba(60, 60, 67, 0.29);
+
+  /* iOS Text Colors */
+  --color-text-primary: #000000;
+  --color-text-secondary: rgba(60, 60, 67, 0.6);
+  --color-text-tertiary: rgba(60, 60, 67, 0.3);
+  --color-text-quaternary: rgba(60, 60, 67, 0.18);
+
+  /* iOS Semantic Colors */
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-info: #007AFF;
+  --color-danger: #FF3B30;
+
+  /* iOS Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+
+  /* iOS Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 48px rgba(0,0,0,0.16), 0 8px 16px rgba(0,0,0,0.06);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+/* iOS SF Pro-like text rendering */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Tabular numbers for currency */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* iOS-style card with subtle blur */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 0.5px solid var(--color-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.card-elevated {
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+/* iOS Primary button - Blue style */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-xl);
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 17px;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  letter-spacing: -0.01em;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+  transform: scale(0.98);
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+}
+
+.btn-primary:disabled {
+  background: rgba(60, 60, 67, 0.18);
+  color: rgba(60, 60, 67, 0.3);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* iOS Secondary button */
+.btn-secondary {
+  background: var(--color-surface-2);
+  color: var(--color-primary);
+  border-radius: var(--radius-xl);
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 17px;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.btn-secondary:hover {
+  background: rgba(118, 118, 128, 0.12);
+}
+
+.btn-secondary:active {
+  transform: scale(0.96);
+}
+
+/* iOS Danger button */
+.btn-danger {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--color-danger);
+  border-radius: var(--radius-xl);
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 17px;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 59, 48, 0.18);
+}
+
+.btn-danger:active {
+  transform: scale(0.96);
+}
+
+/* iOS Bottom sheet */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  box-shadow: var(--shadow-xl);
+  z-index: 50;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+.bottom-sheet-handle {
+  width: 36px;
+  height: 5px;
+  background: rgba(60, 60, 67, 0.3);
+  border-radius: 3px;
+  margin: 6px auto 20px;
+}
+
+/* iOS Backdrop with blur */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 40;
+}
+
+/* iOS Alert/Modal style */
+.ios-alert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  z-index: 60;
+  min-width: min(270px, calc(100vw - 24px));
+  width: calc(100vw - 24px);
+  max-width: 320px;
+  overflow: hidden;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+.ios-alert-title {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  padding: 20px 16px 8px;
+}
+
+.ios-alert-message {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 0 16px 20px;
+  line-height: 1.4;
+}
+
+.ios-alert-buttons {
+  display: flex;
+  border-top: 0.5px solid var(--color-border);
+}
+
+.ios-alert-btn {
+  flex: 1;
+  padding: 14px;
+  font-size: 17px;
+  font-weight: 400;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary);
+  transition: background 100ms;
+}
+
+.ios-alert-btn:not(:last-child) {
+  border-right: 0.5px solid var(--color-border);
+}
+
+.ios-alert-btn:active {
+  background: var(--color-surface-2);
+}
+
+.ios-alert-btn-danger {
+  color: var(--color-danger);
+}
+
+.ios-alert-btn-bold {
+  font-weight: 600;
+}
+
+/* iOS Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.badge-pending {
+  background: rgba(255, 149, 0, 0.12);
+  color: #CC7700;
+}
+
+.badge-preparing {
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--color-primary);
+}
+
+.badge-done {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248A3D;
+}
+
+.badge-cancelled {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--color-danger);
+}
+
+/* iOS Input styles */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+textarea,
+select {
+  background: var(--color-surface-2);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 17px;
+  transition: all 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  width: 100%;
+  font-family: inherit;
+  color: var(--color-text-primary);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.2);
+  background: var(--color-surface);
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* iOS Checkbox */
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--color-border-strong);
+  appearance: none;
+  cursor: pointer;
+  transition: all 150ms;
+  position: relative;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* iOS Animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-slideIn {
+  animation: slideIn 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-fadeIn {
+  animation: fadeIn 200ms ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-pulse-once {
+  animation: pulse 500ms ease-out;
+}
+
+.animate-bounce {
+  animation: bounce 600ms ease-in-out;
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 25%,
+    rgba(118, 118, 128, 0.16) 50%,
+    var(--color-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* iOS Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(60, 60, 67, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(60, 60, 67, 0.3);
+}
+
+/* iOS Touch targets */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Safe area for mobile */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* iOS Segmented Control style */
+.segmented-control {
+  display: inline-flex;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.segmented-control-item {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.segmented-control-item.active {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* iOS List/Table styles */
+.ios-list {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ios-list-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--color-border);
+}
+
+.ios-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Motivational message popup */
+.motivational-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  color: white;
+  padding: 32px 40px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  z-index: 70;
+  text-align: center;
+  width: min(400px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+}
+
+.motivational-popup h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.motivational-popup p {
+  font-size: 16px;
+  opacity: 0.9;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Menu item image placeholder */
+.menu-image {
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, var(--color-surface-2), rgba(118, 118, 128, 0.12));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.menu-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-image-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* iPad/Tablet optimizations */
+@media (min-width: 768px) {
+  .card {
+    border-radius: var(--radius-xl);
+  }
+
+  .bottom-sheet {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: 500px;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bottom-sheet {
+    max-width: 560px;
+  }
+}
+
+/* Larger touch targets for tablet */
+@media (hover: none) and (pointer: coarse) {
+  button, a, [role="button"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
