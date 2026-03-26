@@ -25,7 +25,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'mie-ayam-bakar',
     name: 'Mie Ayam Bakar',
     basePrice: 35000,
-    image: '/images/menu/mie-ayam-bakar.png', // Ganti dengan gambar yang diupload
+    image: '/images/menu/mie-ayam-bakar.webp', // Ganti dengan gambar yang diupload
     category: 'main',
     addOns: [{ id: 'tambah-bakso', label: 'Tambah Bakso', price: 5000 }],
   },
@@ -33,7 +33,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'mie-ayam-kuah',
     name: 'Mie Ayam Kuah',
     basePrice: 30000,
-    image: '/images/menu/mie-ayam-kuah.png', // Ganti dengan gambar yang diupload
+    image: '/images/menu/mie-ayam-kuah.webp', // Ganti dengan gambar yang diupload
     category: 'main',
     addOns: [{ id: 'tambah-bakso', label: 'Tambah Bakso', price: 5000 }],
   },
@@ -41,7 +41,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'bakso-spesial',
     name: 'Bakso Spesial',
     basePrice: 30000,
-    image: '/images/menu/bakso-spesial.png', // Ganti dengan gambar yang diupload
+    image: '/images/menu/bakso-spesial.webp', // Ganti dengan gambar yang diupload
     category: 'main',
     addOns: [],
   },
@@ -49,7 +49,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'es-teh',
     name: 'Es Teh',
     basePrice: 10000,
-    image: '/images/menu/es-teh.png', // Ganti dengan gambar yang diupload
+    image: '/images/menu/es-teh.webp', // Ganti dengan gambar yang diupload
     category: 'drinks',
     addOns: [],
   },

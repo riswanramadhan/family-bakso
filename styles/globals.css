@@ -569,6 +569,7 @@ button, a, [role="button"] {
 
 /* Menu item image placeholder */
 .menu-image {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   background: linear-gradient(135deg, var(--color-surface-2), rgba(118, 118, 128, 0.12));

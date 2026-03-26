@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { UtensilsCrossed, Coffee, Plus, Minus, X, ShoppingBag } from 'lucide-react';
 import { MENU_CATEGORIES, MENU_ITEMS } from '@/lib/menu';
@@ -97,7 +98,14 @@ export default function MenuGrid({ selectedCategory, onSelectCategory, getMenuCo
                   {/* Menu Image */}
                   <div className="menu-image aspect-square">
                     {item.image ? (
-                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 240px"
+                        quality={72}
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
                         {item.category === 'main' ? (
@@ -159,7 +167,15 @@ export default function MenuGrid({ selectedCategory, onSelectCategory, getMenuCo
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-2">
                     {selectedMenu.image ? (
-                      <img src={selectedMenu.image} alt={selectedMenu.name} className="h-full w-full object-cover" />
+                      <Image
+                        src={selectedMenu.image}
+                        alt={selectedMenu.name}
+                        width={56}
+                        height={56}
+                        sizes="56px"
+                        quality={70}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         {selectedMenu.category === 'main' ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Soup, ShoppingBag, ChefHat, BarChart3 } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -40,9 +41,22 @@ export default function Header({ title, subtitle, todayOrderCount, icon = 'soup'
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold tracking-tight md:text-2xl">{title}</h1>
             {subtitle ? <p className="mt-0.5 break-words text-sm text-text-secondary">{subtitle}</p> : null}
+            <p className="mt-2 text-[11px] text-text-tertiary opacity-70 sm:text-xs">
+              POS Family Bakso. All Rights Reserved | Powered by DekatLokal
+            </p>
           </div>
         </div>
         <div className="text-left sm:text-right">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2.5 py-1">
+            <Image
+              src="/images/logo-family-bakso.png"
+              alt="Logo Family Bakso"
+              width={18}
+              height={18}
+              className="h-[18px] w-[18px] rounded-full object-cover"
+            />
+            <span className="text-xs font-semibold text-text-secondary">Family Bakso</span>
+          </div>
           <p className="text-sm font-medium text-text-secondary">{formatDate(now)}</p>
           <p className="tabular-nums text-lg font-semibold tracking-tight sm:text-xl">{formatTime(now)}</p>
           {typeof todayOrderCount === 'number' ? (

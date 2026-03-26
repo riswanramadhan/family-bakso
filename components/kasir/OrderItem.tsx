@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Trash2, Minus, Plus, UtensilsCrossed } from 'lucide-react';
 import { CartItem } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
@@ -19,7 +20,15 @@ export default function OrderItem({ item, onIncrease, onDecrease, onDelete, onNo
         {/* Menu thumbnail */}
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-surface-2">
           {item.image ? (
-            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+            <Image
+              src={item.image}
+              alt={item.name}
+              width={48}
+              height={48}
+              sizes="48px"
+              quality={68}
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <UtensilsCrossed className="h-5 w-5 text-primary/30" />

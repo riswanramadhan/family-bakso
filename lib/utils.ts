@@ -5,8 +5,14 @@ import { Order, OrderItem } from './types';
  * @param amount - Amount in IDR (full rupiah, not cents)
  * @returns Formatted string like "Rp 35.000"
  */
-export function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
+export function formatRupiah(amount: number | string | null | undefined): string {
+  const numericAmount =
+    typeof amount === 'string'
+      ? Number(amount.replace(/[^\d.-]/g, ''))
+      : Number(amount);
+
+  const safeAmount = Number.isFinite(numericAmount) ? Math.round(numericAmount) : 0;
+  return `Rp ${safeAmount.toLocaleString('id-ID')}`;
 }
 
 /**

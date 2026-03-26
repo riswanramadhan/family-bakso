@@ -1,12 +1,36 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart, ChefHat, BarChart3, Soup } from 'lucide-react';
+import { ShoppingCart, ChefHat, BarChart3 } from 'lucide-react';
 import BottomNav from '@/components/shared/BottomNav';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'POS Family Bakso',
   description: 'Real-time POS system untuk Family Bakso',
+  icons: {
+    icon: '/images/logo-family-bakso.png',
+    apple: '/images/logo-family-bakso.png',
+    shortcut: '/images/logo-family-bakso.png',
+  },
+  openGraph: {
+    title: 'POS Family Bakso',
+    description: 'Real-time POS system untuk Family Bakso',
+    images: [
+      {
+        url: '/images/logo-family-bakso.png',
+        width: 512,
+        height: 512,
+        alt: 'Logo Family Bakso',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'POS Family Bakso',
+    description: 'Real-time POS system untuk Family Bakso',
+    images: ['/images/logo-family-bakso.png'],
+  },
 };
 
 const navItems = [
@@ -22,8 +46,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto flex min-h-screen w-full max-w-[1600px] bg-[radial-gradient(circle_at_top_left,rgba(0,122,255,0.06),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(90,200,250,0.05),transparent_45%)]">
           <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-surface/90 p-5 backdrop-blur-xl lg:block">
             <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
-                <Soup className="h-5 w-5" />
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
+                <Image
+                  src="/images/logo-family-bakso.png"
+                  alt="Logo Family Bakso"
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                  priority
+                />
               </div>
               <p className="text-lg font-bold tracking-tight">FAMILY BAKSO</p>
             </div>

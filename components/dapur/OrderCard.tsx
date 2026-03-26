@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Flame, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Flame, CheckCircle2, X } from 'lucide-react';
 import { Order } from '@/lib/types';
 import { formatOrderNumber, formatTime, getRelativeTime } from '@/lib/utils';
 import StatusBadge from '@/components/dapur/StatusBadge';
@@ -66,11 +66,14 @@ export default function OrderCard({ order, isUpdating, onStart, onFinish, onCanc
             {onCancel ? (
               <button
                 type="button"
-                className="btn-danger flex w-11 items-center justify-center gap-2 px-0"
+                className="btn-danger flex w-20 items-center justify-center gap-1.5 px-2 text-xs"
                 onClick={() => onCancel(order)}
                 disabled={isUpdating}
+                aria-label="Tolak pesanan"
+                title="Tolak pesanan"
               >
-                <XCircle className="h-4 w-4" />
+                <X className="h-4 w-4 text-danger" />
+                <span className="font-semibold text-danger">Tolak</span>
               </button>
             ) : null}
           </>
@@ -90,11 +93,14 @@ export default function OrderCard({ order, isUpdating, onStart, onFinish, onCanc
             {onCancel ? (
               <button
                 type="button"
-                className="btn-danger flex w-11 items-center justify-center gap-2 px-0"
+                className="btn-danger flex w-20 items-center justify-center gap-1.5 px-2 text-xs"
                 onClick={() => onCancel(order)}
                 disabled={isUpdating}
+                aria-label="Tolak pesanan"
+                title="Tolak pesanan"
               >
-                <XCircle className="h-4 w-4" />
+                <X className="h-4 w-4 text-danger" />
+                <span className="font-semibold text-danger">Tolak</span>
               </button>
             ) : null}
           </>

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Loader2, Banknote, QrCode, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import { PaymentMethod } from '@/lib/types';
@@ -23,7 +24,7 @@ const formatNumber = (value: string): string => {
 
 // Parse formatted number back to raw number
 const parseNumber = (value: string): string => {
-  return value.replace(/\./g, '');
+  return value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 };
 
 export default function PaymentModal({ open, total, loading, onClose, onConfirm }: PaymentModalProps) {
@@ -40,9 +41,10 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
     }
   }, [method, open]);
 
-  const cashReceived = cashInput === '' ? 0 : Number(cashInput);
+  const cashReceived = cashInput === '' ? 0 : Number.parseInt(cashInput, 10);
   const quickAmounts = useMemo(() => getQuickAmounts(total), [total]);
-  const change = method === 'tunai' ? Math.max(0, cashReceived - total) : 0;
+  const safeCashReceived = Number.isFinite(cashReceived) ? cashReceived : 0;
+  const change = method === 'tunai' ? Math.max(0, safeCashReceived - total) : 0;
   const isInsufficientCash = method === 'tunai' && cashReceived < total && cashInput !== '';
   const isInvalidCash = method === 'tunai' && cashReceived < total;
 
@@ -122,11 +124,11 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
                   </div>
                 </div>
 
-                {/* QRIS placeholder */}
                 {method === 'qris' && (
-                  <div className="card flex h-32 flex-col items-center justify-center border-2 border-dashed border-primary/20 bg-primary/5">
-                    <QrCode className="h-10 w-10 text-primary/40" />
-                    <p className="mt-2 text-sm font-medium text-text-secondary">Scan QRIS</p>
+                  <div className="card flex min-h-[132px] items-center justify-center bg-surface-2 p-4">
+                    <p className="text-center text-sm text-text-secondary">
+                      Tekan tombol konfirmasi setelah pembayaran QRIS diterima.
+                    </p>
                   </div>
                 )}
               </div>
@@ -203,7 +205,7 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
                       Kembalian
                     </span>
                     <span className={cn(
-                      'tabular-nums text-xl font-bold md:text-2xl',
+                      'tabular-nums min-w-0 whitespace-nowrap text-right text-xl font-bold md:text-2xl',
                       cashReceived >= total ? 'text-success' : 'text-text-tertiary'
                     )}>
                       {formatRupiah(change)}
@@ -212,11 +214,23 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
                 </div>
               )}
 
-              {/* QRIS info text */}
+              {/* QRIS */}
               {method === 'qris' && (
-                <div className="flex items-center justify-center">
-                  <p className="text-center text-sm text-text-secondary">
-                    Tekan tombol konfirmasi setelah pembayaran QRIS diterima.
+                <div className="card overflow-hidden border border-primary/20 bg-primary/5 p-3">
+                  <p className="mb-2 text-center text-sm font-semibold text-text-secondary">Scan QRIS Family Bakso</p>
+                  <div className="mx-auto w-full max-w-[320px] rounded-xl bg-white p-2 shadow-sm">
+                    <Image
+                      src="/images/qris-family-bakso.jpg"
+                      alt="QRIS Family Bakso"
+                      width={320}
+                      height={320}
+                      sizes="(max-width: 768px) 80vw, 320px"
+                      quality={88}
+                      className="h-auto w-full rounded-lg object-contain"
+                    />
+                  </div>
+                  <p className="mt-2 text-center text-xs text-text-secondary">
+                    Pastikan QR terlihat penuh agar customer mudah scan.
                   </p>
                 </div>
               )}

@@ -49,22 +49,22 @@ export default function KitchenBoard({ orders, filter, setFilter, updatingId, on
     <section className="space-y-4">
       {/* iOS Segmented Control */}
       <div className="card p-1.5">
-        <div className="-mx-1 overflow-x-auto px-1 md:mx-0 md:overflow-visible md:px-0">
-          <div className="flex min-w-max gap-1 md:min-w-0">
+        <div>
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
             {filterConfig.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setFilter(item.id)}
                 className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition-all duration-200 md:flex-1',
+                  'flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm font-semibold whitespace-nowrap transition-all duration-200 md:flex-1',
                   filter === item.id
                     ? 'bg-primary text-white shadow-md'
                     : 'text-text-secondary hover:bg-surface-2'
                 )}
               >
                 <item.Icon className="h-4 w-4" />
-                <span>{item.label}</span>
+                <span className="truncate">{item.label}</span>
                 {item.id === 'pending' && pending.length > 0 && (
                   <span className={cn(
                     'ml-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold',
