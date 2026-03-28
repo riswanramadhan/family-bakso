@@ -50,6 +50,12 @@ export interface SyncResult {
   conflicts: number;
 }
 
+export interface CloudPullResult {
+  ok: boolean;
+  pulled: number;
+  queueKept: number;
+}
+
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
@@ -212,10 +218,24 @@ export function getTodayLocalOrderCount(): number {
 
 export function mergeServerAndLocalOrders(serverOrders: Order[]): Order[] {
   const localOrders = getLocalOrders();
+  const queue = getQueue();
+  const pendingLocalCreateIds = new Set(
+    queue
+      .filter((item): item is QueueCreateItem => item.type === 'create')
+      .map((item) => item.localOrderId)
+  );
+  const pendingStatusIds = new Set(
+    queue
+      .filter((item): item is QueueStatusItem => item.type === 'status')
+      .map((item) => item.orderId)
+  );
   const serverMap = new Map(serverOrders.map((order) => [order.id, order]));
 
   localOrders.forEach((order) => {
-    if (order.id.startsWith('local-') || !serverMap.has(order.id)) {
+    const isPendingLocalCreate = order.id.startsWith('local-') && pendingLocalCreateIds.has(order.id);
+    const isPendingStatusOnly = !order.id.startsWith('local-') && pendingStatusIds.has(order.id);
+
+    if (isPendingLocalCreate || (!serverMap.has(order.id) && isPendingStatusOnly)) {
       serverMap.set(order.id, order);
     }
   });
@@ -372,4 +392,35 @@ export function isPaymentInProgress(): boolean {
 export function setPaymentInProgress(active: boolean): void {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PAYMENT_IN_PROGRESS_KEY, active ? '1' : '0');
+}
+
+export function clearLocalOrdersState(): void {
+  if (!canUseStorage()) return;
+  window.localStorage.removeItem(LOCAL_ORDERS_KEY);
+  window.localStorage.removeItem(SYNC_QUEUE_KEY);
+  window.localStorage.removeItem(SYNC_CONFLICTS_KEY);
+  window.localStorage.removeItem(PAYMENT_IN_PROGRESS_KEY);
+}
+
+export async function pullLatestFromCloudToLocal(): Promise<CloudPullResult> {
+  if (!isSupabaseConfigured || !isLikelyOnline()) {
+    return { ok: false, pulled: 0, queueKept: getQueue().length };
+  }
+
+  const queue = getQueue();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  if (error || !data) {
+    return { ok: false, pulled: 0, queueKept: queue.length };
+  }
+
+  saveOrders((data ?? []) as Order[]);
+
+  // Keep only unsynced queue and conflict markers; local rows are now cloud snapshot.
+  saveQueue(queue);
+  return { ok: true, pulled: data.length, queueKept: queue.length };
 }

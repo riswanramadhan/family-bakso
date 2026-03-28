@@ -4,13 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CloudOff, RefreshCw, Server } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import Toast from '@/components/shared/Toast';
+import IOSAlert from '@/components/shared/IOSAlert';
 import {
   SyncConflict,
+  clearLocalOrdersState,
   clearAllSyncConflicts,
   getSyncConflicts,
   getSyncQueueSummary,
   isAutoSyncEnabled,
   isLikelyOnline,
+  pullLatestFromCloudToLocal,
   setAutoSyncEnabled,
   syncQueuedOrders,
 } from '@/lib/offline-orders';
@@ -20,6 +23,9 @@ import { formatDateTime, generateId } from '@/lib/utils';
 export default function SinkronisasiPage() {
   const [isOnline, setIsOnline] = useState(isLikelyOnline);
   const [syncing, setSyncing] = useState(false);
+  const [pullingCloud, setPullingCloud] = useState(false);
+  const [resettingAll, setResettingAll] = useState(false);
+  const [resetAlertOpen, setResetAlertOpen] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [hasAppUpdate, setHasAppUpdate] = useState(false);
@@ -104,6 +110,11 @@ export default function SinkronisasiPage() {
 
     setSyncing(true);
     const result = await syncQueuedOrders();
+
+    if (result.failed === 0) {
+      await pullLatestFromCloudToLocal();
+    }
+
     setSyncing(false);
     refreshState();
 
@@ -118,6 +129,58 @@ export default function SinkronisasiPage() {
     }
 
     pushToast(`Sinkronisasi selesai. ${result.synced} item berhasil.`, 'success');
+  };
+
+  const handlePullCloud = async () => {
+    if (!isLikelyOnline()) {
+      pushToast('Masih offline. Sambungkan internet dulu.', 'error');
+      return;
+    }
+
+    setPullingCloud(true);
+    const result = await pullLatestFromCloudToLocal();
+    setPullingCloud(false);
+    refreshState();
+
+    if (!result.ok) {
+      pushToast('Gagal memuat data cloud. Coba lagi saat koneksi stabil.', 'error');
+      return;
+    }
+
+    pushToast(`Data cloud dimuat ulang. ${result.pulled} order tersalin ke perangkat ini.`, 'success');
+  };
+
+  const handleConfirmResetAll = async () => {
+    if (!isLikelyOnline()) {
+      pushToast('Reset cloud butuh koneksi internet.', 'error');
+      return;
+    }
+
+    setResetAlertOpen(false);
+    setResettingAll(true);
+
+    try {
+      const response = await fetch('/api/orders/reset', {
+        method: 'POST',
+      });
+
+      const body = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        pushToast(body.error ?? 'Reset data gagal.', 'error');
+        setResettingAll(false);
+        return;
+      }
+
+      clearLocalOrdersState();
+      clearAllSyncConflicts();
+      refreshState();
+      pushToast('Semua data order berhasil direset. Order berikutnya mulai dari #001.', 'success');
+    } catch {
+      pushToast('Reset data gagal karena error jaringan/server.', 'error');
+    }
+
+    setResettingAll(false);
   };
 
   const handleToggleAutoSync = () => {
@@ -225,6 +288,9 @@ export default function SinkronisasiPage() {
           <button type="button" className="btn-primary" onClick={() => void handleManualSync()} disabled={syncing}>
             {syncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
           </button>
+          <button type="button" className="btn-secondary" onClick={() => void handlePullCloud()} disabled={pullingCloud}>
+            {pullingCloud ? 'Memuat Cloud...' : 'Paksa Tarik Data Cloud'}
+          </button>
           <button type="button" className="btn-secondary" onClick={refreshState}>
             Muat Ulang Status
           </button>
@@ -234,6 +300,21 @@ export default function SinkronisasiPage() {
             ? 'Mode hybrid aktif: auto-sync berjalan cerdas, dan tombol manual tetap bisa dipakai kapan saja.'
             : 'Mode manual aktif: data hanya dikirim saat tombol Sinkronkan ditekan.'}
         </p>
+      </section>
+
+      <section className="card space-y-3 p-4 sm:p-5">
+        <p className="text-sm font-semibold text-text-secondary">Reset Data Order</p>
+        <p className="text-xs text-text-tertiary">
+          Fitur ini menghapus semua order di cloud dan perangkat ini, lalu order_number kembali mulai dari #001.
+        </p>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => setResetAlertOpen(true)}
+          disabled={resettingAll}
+        >
+          {resettingAll ? 'Mereset Data...' : 'Hapus Semua Data Order'}
+        </button>
       </section>
 
       <section className="card space-y-3 p-4 sm:p-5">
@@ -299,6 +380,17 @@ export default function SinkronisasiPage() {
       </section>
 
       <Toast toasts={toasts} onClose={(id) => setToasts((prev) => prev.filter((toast) => toast.id !== id))} />
+
+      <IOSAlert
+        open={resetAlertOpen}
+        title="Hapus Semua Data?"
+        message="Semua order di cloud dan perangkat ini akan dihapus permanen. Nomor order akan kembali dari #001. Lanjutkan?"
+        cancelText="Batal"
+        confirmText="Ya, Hapus"
+        confirmDanger
+        onCancel={() => setResetAlertOpen(false)}
+        onConfirm={() => void handleConfirmResetAll()}
+      />
     </div>
   );
 }

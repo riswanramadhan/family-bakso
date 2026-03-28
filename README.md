@@ -24,6 +24,7 @@ npm install
 3. Jalankan migration SQL pada project Supabase:
 
 - File migration: `supabase/migrations/001_initial.sql`
+- File migration tambahan reset data: `supabase/migrations/002_reset_orders_fn.sql`
 - Bisa dijalankan via SQL Editor Supabase.
 
 4. Jalankan development server:
@@ -70,4 +71,6 @@ Status alur:
 - App sudah mendukung PWA dasar (service worker + manifest) untuk akses offline pada Android tablet dan iPad (Add to Home Screen).
 - Penyimpanan offline menggunakan local storage perangkat dengan antrean sinkronisasi hybrid (auto cerdas + manual).
 - Konflik sinkronisasi multi-device dicatat di halaman sinkronisasi, dan server diprioritaskan jika ada data yang lebih baru.
+- Halaman sinkronisasi menyediakan tombol `Paksa Tarik Data Cloud` untuk menyelaraskan data container iOS (Safari vs Add to Home Screen).
+- Halaman sinkronisasi menyediakan `Hapus Semua Data Order` (dengan konfirmasi alert) untuk reset order cloud + lokal dan mulai lagi dari #001.
 - Update versi aplikasi tidak dipaksa otomatis; operator perlu cek update dan menekan Terapkan Update secara manual.
