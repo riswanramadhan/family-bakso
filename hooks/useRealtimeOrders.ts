@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, removeLocalOrder, upsertLocalOrder } from '@/lib/offline-orders';
 import { Order } from '@/lib/types';
-import { playNotificationSound, sortByCreatedAtDesc } from '@/lib/utils';
+import { initializeNotificationSound, playNotificationSound, sortByCreatedAtDesc } from '@/lib/utils';
 
 interface UseRealtimeOrdersResult {
   orders: Order[];
@@ -47,6 +47,20 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     setOrders(merged);
     merged.forEach((order) => upsertLocalOrder(order));
     setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      void initializeNotificationSound();
+    };
+
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('pointerdown', unlockAudio);
+    };
   }, []);
 
   useEffect(() => {

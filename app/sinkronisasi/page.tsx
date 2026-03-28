@@ -164,10 +164,13 @@ export default function SinkronisasiPage() {
         method: 'POST',
       });
 
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json()) as { error?: string; detail?: string; warning?: string; ok?: boolean };
 
       if (!response.ok) {
         pushToast(body.error ?? 'Reset data gagal.', 'error');
+        if (body.detail) {
+          pushToast(body.detail, 'info');
+        }
         setResettingAll(false);
         return;
       }
@@ -175,7 +178,11 @@ export default function SinkronisasiPage() {
       clearLocalOrdersState();
       clearAllSyncConflicts();
       refreshState();
-      pushToast('Semua data order berhasil direset. Order berikutnya mulai dari #001.', 'success');
+      if (body.warning) {
+        pushToast(body.warning, 'info');
+      } else {
+        pushToast('Semua data order berhasil direset. Order berikutnya mulai dari #001.', 'success');
+      }
     } catch {
       pushToast('Reset data gagal karena error jaringan/server.', 'error');
     }

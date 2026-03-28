@@ -307,28 +307,73 @@ export function generateReceiptHTML(order: Order): string {
 }
 
 /**
- * Play notification sound using Web Audio API
+ * Reusable AudioContext for iOS-friendly notification playback.
  */
-export function playNotificationSound(): void {
-  if (typeof window === 'undefined') return;
+let cachedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+
+  if (cachedAudioContext) return cachedAudioContext;
 
   try {
-    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    if (!Ctor) return null;
+    cachedAudioContext = new Ctor();
+    return cachedAudioContext;
+  } catch {
+    return null;
+  }
+}
 
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+/**
+ * Unlock audio on first user interaction (needed by iOS Safari/PWA).
+ */
+export async function initializeNotificationSound(): Promise<void> {
+  const audioContext = getAudioContext();
+  if (!audioContext) return;
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+  try {
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+  } catch {
+    // Ignore unlock failures; notification playback will retry later.
+  }
+}
 
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+/**
+ * Play compact iOS-style chime for incoming kitchen orders.
+ */
+export function playNotificationSound(): void {
+  const audioContext = getAudioContext();
+  if (!audioContext) return;
+
+  try {
+    const now = audioContext.currentTime;
+    const notes = [880, 1175];
+
+    notes.forEach((frequency, idx) => {
+      const startAt = now + idx * 0.09;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+
+      gainNode.gain.setValueAtTime(0.0001, startAt);
+      gainNode.gain.exponentialRampToValueAtTime(0.12, startAt + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.12);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.start(startAt);
+      oscillator.stop(startAt + 0.125);
+    });
   } catch (error) {
     console.error('Error playing notification sound:', error);
   }
