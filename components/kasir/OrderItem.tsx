@@ -25,6 +25,7 @@ export default function OrderItem({ item, onIncrease, onDecrease, onDelete, onNo
               alt={item.name}
               width={48}
               height={48}
+              unoptimized
               sizes="48px"
               quality={68}
               className="h-full w-full object-cover"

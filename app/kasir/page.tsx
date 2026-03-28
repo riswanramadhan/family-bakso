@@ -9,7 +9,7 @@ import PaymentModal from '@/components/kasir/PaymentModal';
 import ReceiptModal from '@/components/kasir/ReceiptModal';
 import MotivationalPopup from '@/components/kasir/MotivationalPopup';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { createOfflineOrder, getTodayLocalOrderCount, isLikelyOnline, upsertLocalOrder } from '@/lib/offline-orders';
+import { createOfflineOrder, getTodayLocalOrderCount, isLikelyOnline, setPaymentInProgress, upsertLocalOrder } from '@/lib/offline-orders';
 import { Order, Toast as ToastType } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { useOrderStore } from '@/store/orderStore';
@@ -81,6 +81,13 @@ export default function KasirPage() {
   };
 
   useEffect(() => {
+    setPaymentInProgress(loadingPayment);
+    return () => {
+      setPaymentInProgress(false);
+    };
+  }, [loadingPayment]);
+
+  useEffect(() => {
     const onConnectivityChange = async () => {
       const nextOnline = isLikelyOnline();
       setIsOnline(nextOnline);
@@ -118,6 +125,7 @@ export default function KasirPage() {
       items: cartItems.map((item) => ({
         menu_id: item.menuId,
         name: item.name,
+        image: item.image,
         quantity: item.quantity,
         unit_price: item.unitPrice,
         subtotal: item.subtotal,
@@ -139,7 +147,7 @@ export default function KasirPage() {
       setPaymentOpen(false);
       setReceiptOpen(true);
       setTodayOrderCount((prev) => prev + 1);
-      pushToast('Tersimpan offline. Buka halaman Sinkronisasi untuk kirim data ke cloud.', 'info');
+      pushToast('Tersimpan offline. Akan auto-sync saat koneksi stabil (jika Auto Sync aktif).', 'info');
       setLoadingPayment(false);
     };
 
@@ -195,7 +203,7 @@ export default function KasirPage() {
           <p className="text-sm font-medium text-warning">
             {!isSupabaseConfigured
               ? 'Database cloud belum dikonfigurasi. Semua transaksi disimpan lokal di perangkat.'
-              : 'Mode offline aktif. Transaksi disimpan lokal dan dikirim saat tombol sinkron ditekan.'}
+              : 'Mode offline aktif. Transaksi disimpan lokal dan akan sinkron saat koneksi stabil (atau manual dari halaman Sinkronisasi).'}
           </p>
         </div>
       )}

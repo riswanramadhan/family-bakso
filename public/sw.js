@@ -1,6 +1,17 @@
 const CACHE_VERSION = 'v2';
 const CACHE_NAME = `family-bakso-pos-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/kasir', '/dapur', '/rekap', '/sinkronisasi'];
+const APP_SHELL = [
+  '/',
+  '/kasir',
+  '/dapur',
+  '/rekap',
+  '/sinkronisasi',
+  '/images/qris-family-bakso.jpg',
+  '/images/menu/mie-ayam-bakar.webp',
+  '/images/menu/mie-ayam-kuah.webp',
+  '/images/menu/bakso-spesial.webp',
+  '/images/menu/es-teh.webp',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

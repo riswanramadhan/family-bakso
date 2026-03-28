@@ -67,7 +67,7 @@ export default function DapurPage() {
         updateLocalOrder(localUpdated);
       }
 
-      pushToast('Perubahan disimpan offline. Sinkronkan manual dari halaman Sinkronisasi.', 'info');
+      pushToast('Perubahan disimpan offline. Akan auto-sync saat koneksi stabil (jika Auto Sync aktif).', 'info');
       return;
     }
 
@@ -119,7 +119,7 @@ export default function DapurPage() {
     <div className="space-y-4">
       {!isOnline ? (
         <div className="card border-warning/20 bg-warning/5 p-3">
-          <p className="text-xs font-semibold text-warning">Mode offline aktif. Update status masuk antrean dan dikirim saat tombol sinkron ditekan.</p>
+          <p className="text-xs font-semibold text-warning">Mode offline aktif. Update status masuk antrean, lalu auto-sync saat koneksi stabil atau bisa disinkronkan manual.</p>
         </div>
       ) : null}
       <Header

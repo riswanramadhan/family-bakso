@@ -7,6 +7,8 @@ import { sortByCreatedAtDesc } from '@/lib/utils';
 const LOCAL_ORDERS_KEY = 'fb_pos_orders';
 const SYNC_QUEUE_KEY = 'fb_pos_sync_queue';
 const SYNC_CONFLICTS_KEY = 'fb_pos_sync_conflicts';
+const AUTO_SYNC_ENABLED_KEY = 'fb_pos_auto_sync_enabled';
+const PAYMENT_IN_PROGRESS_KEY = 'fb_pos_payment_in_progress';
 
 interface QueueCreateItem {
   id: string;
@@ -251,7 +253,9 @@ export async function syncQueuedOrders(): Promise<SyncResult> {
       continue;
     }
 
-    const targetId = idMap.get(item.orderId) ?? item.orderId;
+    const mappedId = idMap.get(item.orderId);
+    const targetId = mappedId ?? item.orderId;
+    const cameFromLocalCreate = Boolean(mappedId);
     const { data: serverOrder, error: readError } = await supabase
       .from('orders')
       .select('*')
@@ -266,7 +270,13 @@ export async function syncQueuedOrders(): Promise<SyncResult> {
     const localTime = new Date(item.localUpdatedAt).getTime();
     const serverTime = new Date(serverOrder.updated_at).getTime();
 
-    if (Number.isFinite(localTime) && Number.isFinite(serverTime) && serverTime > localTime && serverOrder.status !== item.status) {
+    if (
+      !cameFromLocalCreate &&
+      Number.isFinite(localTime) &&
+      Number.isFinite(serverTime) &&
+      serverTime > localTime &&
+      serverOrder.status !== item.status
+    ) {
       addConflict({
         orderId: targetId,
         localStatus: item.status,
@@ -340,4 +350,26 @@ export function getSyncConflicts(): SyncConflict[] {
 
 export function clearAllSyncConflicts(): void {
   saveConflicts([]);
+}
+
+export function isAutoSyncEnabled(): boolean {
+  if (!canUseStorage()) return true;
+  const raw = window.localStorage.getItem(AUTO_SYNC_ENABLED_KEY);
+  if (raw == null) return true;
+  return raw === '1';
+}
+
+export function setAutoSyncEnabled(enabled: boolean): void {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(AUTO_SYNC_ENABLED_KEY, enabled ? '1' : '0');
+}
+
+export function isPaymentInProgress(): boolean {
+  if (!canUseStorage()) return false;
+  return window.localStorage.getItem(PAYMENT_IN_PROGRESS_KEY) === '1';
+}
+
+export function setPaymentInProgress(active: boolean): void {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(PAYMENT_IN_PROGRESS_KEY, active ? '1' : '0');
 }

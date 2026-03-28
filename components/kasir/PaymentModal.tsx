@@ -224,6 +224,7 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
                       alt="QRIS Family Bakso"
                       width={320}
                       height={320}
+                      unoptimized
                       sizes="(max-width: 768px) 80vw, 320px"
                       quality={88}
                       className="h-auto w-full rounded-lg object-contain"

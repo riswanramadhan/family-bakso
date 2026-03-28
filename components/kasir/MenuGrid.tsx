@@ -102,6 +102,7 @@ export default function MenuGrid({ selectedCategory, onSelectCategory, getMenuCo
                         src={item.image}
                         alt={item.name}
                         fill
+                        unoptimized
                         sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 240px"
                         quality={72}
                         className="object-cover"
@@ -172,6 +173,7 @@ export default function MenuGrid({ selectedCategory, onSelectCategory, getMenuCo
                         alt={selectedMenu.name}
                         width={56}
                         height={56}
+                        unoptimized
                         sizes="56px"
                         quality={70}
                         className="h-full w-full object-cover"

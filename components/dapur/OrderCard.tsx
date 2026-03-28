@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Loader2, Flame, CheckCircle2, X } from 'lucide-react';
 import { Order } from '@/lib/types';
 import { formatOrderNumber, formatTime, getRelativeTime } from '@/lib/utils';
@@ -29,11 +30,22 @@ export default function OrderCard({ order, isUpdating, onStart, onFinish, onCanc
       <ul className="space-y-1.5 text-sm">
         {order.items.map((item, index) => (
           <li key={`${item.menu_id}-${index}`} className="flex items-start gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-              {item.quantity}
-            </span>
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-surface-2">
+              {item.image ? (
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  width={44}
+                  height={44}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-primary/60">{item.quantity}x</div>
+              )}
+            </div>
             <div className="min-w-0">
-              <span className="font-semibold">{item.name}</span>
+              <span className="font-semibold">{item.quantity}x {item.name}</span>
               {item.add_ons.length > 0 ? (
                 <span className="text-text-secondary"> + {item.add_ons.map((a) => a.label).join(', ')}</span>
               ) : null}

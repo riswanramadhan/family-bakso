@@ -9,7 +9,9 @@ import {
   clearAllSyncConflicts,
   getSyncConflicts,
   getSyncQueueSummary,
+  isAutoSyncEnabled,
   isLikelyOnline,
+  setAutoSyncEnabled,
   syncQueuedOrders,
 } from '@/lib/offline-orders';
 import { Toast as ToastType } from '@/lib/types';
@@ -21,6 +23,7 @@ export default function SinkronisasiPage() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [hasAppUpdate, setHasAppUpdate] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabledState] = useState(isAutoSyncEnabled);
   const [queueSummary, setQueueSummary] = useState(getSyncQueueSummary());
   const [conflicts, setConflicts] = useState<SyncConflict[]>(getSyncConflicts());
   const [toasts, setToasts] = useState<ToastType[]>([]);
@@ -35,6 +38,7 @@ export default function SinkronisasiPage() {
 
   const refreshState = useCallback(() => {
     setIsOnline(isLikelyOnline());
+    setAutoSyncEnabledState(isAutoSyncEnabled());
     setQueueSummary(getSyncQueueSummary());
     setConflicts(getSyncConflicts());
   }, []);
@@ -116,6 +120,13 @@ export default function SinkronisasiPage() {
     pushToast(`Sinkronisasi selesai. ${result.synced} item berhasil.`, 'success');
   };
 
+  const handleToggleAutoSync = () => {
+    const next = !autoSyncEnabled;
+    setAutoSyncEnabled(next);
+    setAutoSyncEnabledState(next);
+    pushToast(next ? 'Auto Sync diaktifkan.' : 'Auto Sync dimatikan. Gunakan tombol Sinkronkan Sekarang.', 'info');
+  };
+
   const handleClearConflicts = () => {
     clearAllSyncConflicts();
     refreshState();
@@ -184,6 +195,20 @@ export default function SinkronisasiPage() {
           </span>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface-2 p-3">
+          <div>
+            <p className="text-sm font-semibold text-text-secondary">Auto Sync</p>
+            <p className="text-xs text-text-tertiary">Auto sync hanya jalan saat koneksi stabil dan kasir tidak sedang pembayaran.</p>
+          </div>
+          <button
+            type="button"
+            className={autoSyncEnabled ? 'btn-primary' : 'btn-secondary'}
+            onClick={handleToggleAutoSync}
+          >
+            {autoSyncEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {summary.map((item) => (
             <div key={item.label} className="rounded-xl border border-border bg-surface-2 p-3">
@@ -204,7 +229,11 @@ export default function SinkronisasiPage() {
             Muat Ulang Status
           </button>
         </div>
-        <p className="text-xs text-text-tertiary">Sinkronisasi tidak otomatis. Data hanya dikirim saat tombol Sinkronkan ditekan.</p>
+        <p className="text-xs text-text-tertiary">
+          {autoSyncEnabled
+            ? 'Mode hybrid aktif: auto-sync berjalan cerdas, dan tombol manual tetap bisa dipakai kapan saja.'
+            : 'Mode manual aktif: data hanya dikirim saat tombol Sinkronkan ditekan.'}
+        </p>
       </section>
 
       <section className="card space-y-3 p-4 sm:p-5">

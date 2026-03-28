@@ -7,9 +7,9 @@ Aplikasi POS real-time untuk FAMILY BAKSO berbasis Next.js 14, TypeScript, Tailw
 - Kasir (`/kasir`): input pesanan, add-ons, pembayaran tunai/QRIS, struk digital.
 - Dapur (`/dapur`): realtime kitchen display, update status pesanan dengan optimistic UI.
 - Rekap (`/rekap`): statistik, filter, pencarian, tabel paginasi, export Excel dan PDF.
-- Sinkronisasi (`/sinkronisasi`): status antrean offline, tombol sinkron manual, conflict log, dan kontrol update aplikasi.
+- Sinkronisasi (`/sinkronisasi`): status antrean offline, Auto Sync ON/OFF, tombol sinkron manual, conflict log, dan kontrol update aplikasi.
 - Desain iOS-inspired, responsif mobile/tablet/desktop.
-- Offline-first mode: transaksi tetap berjalan saat internet putus, data disimpan lokal dan sinkron manual saat tombol sinkron ditekan.
+- Offline-first mode hybrid: transaksi tetap berjalan saat internet putus, data disimpan lokal lalu sync otomatis saat koneksi stabil (opsional bisa dipaksa manual).
 
 ## Setup Cepat
 
@@ -68,6 +68,6 @@ Status alur:
 - Format Rupiah menggunakan locale `id-ID` (`Rp 35.000`).
 - Footer global tersedia di semua halaman.
 - App sudah mendukung PWA dasar (service worker + manifest) untuk akses offline pada Android tablet dan iPad (Add to Home Screen).
-- Penyimpanan offline menggunakan local storage perangkat dengan antrean sinkronisasi manual.
+- Penyimpanan offline menggunakan local storage perangkat dengan antrean sinkronisasi hybrid (auto cerdas + manual).
 - Konflik sinkronisasi multi-device dicatat di halaman sinkronisasi, dan server diprioritaskan jika ada data yang lebih baru.
 - Update versi aplikasi tidak dipaksa otomatis; operator perlu cek update dan menekan Terapkan Update secara manual.
