@@ -74,7 +74,7 @@ export default function DapurPage() {
   const updateStatus = async (order: Order, nextStatus: 'preparing' | 'done' | 'cancelled') => {
     setUpdatingId(order.id);
 
-    const optimistic = { ...order, status: nextStatus } as Order;
+    const optimistic = { ...order, status: nextStatus, updated_at: new Date().toISOString() } as Order;
     updateLocalOrder(optimistic);
 
     if (!isLikelyOnline()) {

@@ -8,7 +8,24 @@ export default function OfflineBootstrap() {
     if (typeof window === 'undefined') return;
 
     if ('serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/sw.js');
+      void navigator.serviceWorker.register('/sw.js').then((registration) => {
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) return;
+
+          installingWorker.addEventListener('statechange', () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+
+        void registration.update();
+      }).catch(() => undefined);
     }
 
     const BASE_RETRY_MS = 5000;

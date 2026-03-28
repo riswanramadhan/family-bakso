@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `family-bakso-pos-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',
@@ -12,6 +12,20 @@ const APP_SHELL = [
   '/images/menu/bakso-spesial.webp',
   '/images/menu/es-teh.webp',
 ];
+
+function isCacheableStaticRequest(request) {
+  const url = new URL(request.url);
+  const sameOrigin = url.origin === self.location.origin;
+  if (!sameOrigin) return false;
+  if (url.pathname.startsWith('/api/')) return false;
+
+  return (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/_next/image') ||
+    url.pathname.startsWith('/images/') ||
+    /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|avif|svg|ico|woff2?)$/i.test(url.pathname)
+  );
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -62,6 +76,11 @@ self.addEventListener('fetch', (event) => {
           return fallback || Response.error();
         })
     );
+    return;
+  }
+
+  if (!isCacheableStaticRequest(request)) {
+    event.respondWith(fetch(request));
     return;
   }
 
