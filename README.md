@@ -72,5 +72,6 @@ Status alur:
 - Penyimpanan offline menggunakan local storage perangkat dengan antrean sinkronisasi hybrid (auto cerdas + manual).
 - Konflik sinkronisasi multi-device dicatat di halaman sinkronisasi, dan server diprioritaskan jika ada data yang lebih baru.
 - Halaman sinkronisasi menyediakan tombol `Paksa Tarik Data Cloud` untuk menyelaraskan data container iOS (Safari vs Add to Home Screen).
+- Halaman sinkronisasi menyediakan tombol `Bersihkan Cache Lokal Perangkat Ini` untuk refresh paksa Safari/PWA iOS saat data tertinggal cache lama.
 - Halaman sinkronisasi menyediakan `Hapus Semua Data Order` (dengan konfirmasi alert) untuk reset order cloud + lokal dan mulai lagi dari #001.
 - Update versi aplikasi tidak dipaksa otomatis; operator perlu cek update dan menekan Terapkan Update secara manual.

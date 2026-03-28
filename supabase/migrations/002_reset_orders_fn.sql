@@ -16,4 +16,29 @@ BEGIN
 END;
 $$;
 
+-- Alias typo lama untuk kompatibilitas endpoint lama
+CREATE OR REPLACE FUNCTION public.reset_ordrer()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.reset_orders_data();
+$$;
+
+-- Alias alternatif untuk kompatibilitas tambahan
+CREATE OR REPLACE FUNCTION public.reset_order_data()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.reset_orders_data();
+$$;
+
 GRANT EXECUTE ON FUNCTION public.reset_orders_data() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.reset_ordrer() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.reset_order_data() TO anon, authenticated, service_role;
+
+-- Pastikan PostgREST membaca function terbaru tanpa perlu tunggu cache refresh otomatis
+NOTIFY pgrst, 'reload schema';

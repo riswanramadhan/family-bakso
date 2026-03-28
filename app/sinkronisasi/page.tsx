@@ -26,6 +26,8 @@ export default function SinkronisasiPage() {
   const [pullingCloud, setPullingCloud] = useState(false);
   const [resettingAll, setResettingAll] = useState(false);
   const [resetAlertOpen, setResetAlertOpen] = useState(false);
+  const [clearLocalAlertOpen, setClearLocalAlertOpen] = useState(false);
+  const [clearingLocal, setClearingLocal] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [hasAppUpdate, setHasAppUpdate] = useState(false);
@@ -190,6 +192,38 @@ export default function SinkronisasiPage() {
     setResettingAll(false);
   };
 
+  const handleConfirmClearLocalSafari = async () => {
+    setClearLocalAlertOpen(false);
+    setClearingLocal(true);
+
+    try {
+      clearLocalOrdersState();
+      clearAllSyncConflicts();
+
+      if ('caches' in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((key) => window.caches.delete(key)));
+      }
+
+      refreshState();
+
+      if (isLikelyOnline()) {
+        const pull = await pullLatestFromCloudToLocal();
+        if (pull.ok) {
+          pushToast(`Cache lokal dibersihkan. ${pull.pulled} order terbaru dimuat dari cloud.`, 'success');
+        } else {
+          pushToast('Cache lokal dibersihkan. Tarik data cloud gagal, coba lagi.', 'info');
+        }
+      } else {
+        pushToast('Cache lokal dibersihkan. Saat online, tekan Paksa Tarik Data Cloud.', 'info');
+      }
+    } catch {
+      pushToast('Gagal membersihkan cache lokal Safari.', 'error');
+    }
+
+    setClearingLocal(false);
+  };
+
   const handleToggleAutoSync = () => {
     const next = !autoSyncEnabled;
     setAutoSyncEnabled(next);
@@ -310,6 +344,21 @@ export default function SinkronisasiPage() {
       </section>
 
       <section className="card space-y-3 p-4 sm:p-5">
+        <p className="text-sm font-semibold text-text-secondary">Refresh Paksa Safari / PWA iOS</p>
+        <p className="text-xs text-text-tertiary">
+          Gunakan ini jika data di Safari atau Add to Home Screen tertinggal cache lama. Aksi ini hanya membersihkan data lokal perangkat ini.
+        </p>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => setClearLocalAlertOpen(true)}
+          disabled={clearingLocal}
+        >
+          {clearingLocal ? 'Membersihkan Cache...' : 'Bersihkan Cache Lokal Perangkat Ini'}
+        </button>
+      </section>
+
+      <section className="card space-y-3 p-4 sm:p-5">
         <p className="text-sm font-semibold text-text-secondary">Reset Data Order</p>
         <p className="text-xs text-text-tertiary">
           Fitur ini menghapus semua order di cloud dan perangkat ini, lalu order_number kembali mulai dari #001.
@@ -397,6 +446,16 @@ export default function SinkronisasiPage() {
         confirmDanger
         onCancel={() => setResetAlertOpen(false)}
         onConfirm={() => void handleConfirmResetAll()}
+      />
+
+      <IOSAlert
+        open={clearLocalAlertOpen}
+        title="Bersihkan Cache Lokal?"
+        message="Data lokal Safari/PWA di perangkat ini akan dibersihkan lalu dimuat ulang dari cloud. Lanjutkan?"
+        cancelText="Batal"
+        confirmText="Ya, Bersihkan"
+        onCancel={() => setClearLocalAlertOpen(false)}
+        onConfirm={() => void handleConfirmClearLocalSafari()}
       />
     </div>
   );
