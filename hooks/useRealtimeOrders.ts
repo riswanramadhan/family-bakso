@@ -18,13 +18,22 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(isLikelyOnline);
   const hasMountedRef = useRef(false);
+
+  const upsertListOrder = useCallback((rows: Order[], nextOrder: Order): Order[] => {
+    const exists = rows.some((item) => item.id === nextOrder.id);
+    if (!exists) {
+      return sortByCreatedAtDesc([nextOrder, ...rows]);
+    }
+    return sortByCreatedAtDesc(rows.map((item) => (item.id === nextOrder.id ? nextOrder : item)));
+  }, []);
 
   const fetchInitial = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    if (!isLikelyOnline()) {
+    if (!isOnline) {
       setOrders(getLocalOrders());
       setIsLoading(false);
       return;
@@ -47,6 +56,24 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     setOrders(merged);
     merged.forEach((order) => upsertLocalOrder(order));
     setIsLoading(false);
+  }, [isOnline]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      setIsOnline(true);
+    };
+
+    const onOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -64,15 +91,39 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const bootstrap = window.setTimeout(() => {
       void fetchInitial();
     }, 0);
 
-    if (!isLikelyOnline()) {
+    const handleWake = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchInitial();
+      }
+    };
+
+    window.addEventListener('focus', handleWake);
+    window.addEventListener('pageshow', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
+
+    const poller = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && isLikelyOnline()) {
+        void fetchInitial();
+      }
+    }, 10000);
+
+    return () => {
+      window.clearTimeout(bootstrap);
+      window.clearInterval(poller);
+      window.removeEventListener('focus', handleWake);
+      window.removeEventListener('pageshow', handleWake);
+      document.removeEventListener('visibilitychange', handleWake);
+    };
+  }, [fetchInitial]);
+
+  useEffect(() => {
+    if (!isOnline) {
       hasMountedRef.current = true;
-      return () => {
-        window.clearTimeout(timer);
-      };
+      return;
     }
 
     const channel = supabase
@@ -81,7 +132,7 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
         const nextOrder = payload.new as Order;
         if (payload.eventType === 'INSERT') {
           upsertLocalOrder(nextOrder);
-          setOrders((prev) => sortByCreatedAtDesc([nextOrder, ...prev]));
+          setOrders((prev) => upsertListOrder(prev, nextOrder));
           if (hasMountedRef.current) {
             playNotificationSound();
           }
@@ -89,7 +140,7 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
 
         if (payload.eventType === 'UPDATE') {
           upsertLocalOrder(nextOrder);
-          setOrders((prev) => prev.map((order) => (order.id === nextOrder.id ? nextOrder : order)));
+          setOrders((prev) => upsertListOrder(prev, nextOrder));
         }
 
         if (payload.eventType === 'DELETE') {
@@ -103,10 +154,9 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     hasMountedRef.current = true;
 
     return () => {
-      window.clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
-  }, [fetchInitial]);
+  }, [isOnline, upsertListOrder]);
 
   const updateLocalOrder = useCallback((updatedOrder: Order) => {
     upsertLocalOrder(updatedOrder);

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, upsertLocalOrder } from '@/lib/offline-orders';
+import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, removeLocalOrder, upsertLocalOrder } from '@/lib/offline-orders';
 import { MenuItemSales, Order, OrderFilters, OrderStats } from '@/lib/types';
-import { getDateRange, orderMatchesSearch } from '@/lib/utils';
+import { getDateRange, orderMatchesSearch, sortByCreatedAtDesc } from '@/lib/utils';
 
 interface UseOrdersResult {
   orders: Order[];
@@ -30,13 +30,22 @@ export function useOrders(): UseOrdersResult {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(isLikelyOnline);
   const [filters, setFiltersState] = useState<OrderFilters>(defaultFilters);
+
+  const upsertListOrder = useCallback((rows: Order[], nextOrder: Order): Order[] => {
+    const exists = rows.some((item) => item.id === nextOrder.id);
+    if (!exists) {
+      return sortByCreatedAtDesc([nextOrder, ...rows]);
+    }
+    return sortByCreatedAtDesc(rows.map((item) => (item.id === nextOrder.id ? nextOrder : item)));
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    if (!isLikelyOnline()) {
+    if (!isOnline) {
       setOrders(getLocalOrders());
       setIsLoading(false);
       return;
@@ -72,15 +81,83 @@ export function useOrders(): UseOrdersResult {
     setOrders(merged);
     merged.forEach((order) => upsertLocalOrder(order));
     setIsLoading(false);
-  }, [filters.dateRange, filters.endDate, filters.startDate]);
+  }, [filters.dateRange, filters.endDate, filters.startDate, isOnline]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const bootstrap = window.setTimeout(() => {
       void fetchOrders();
     }, 0);
 
-    return () => window.clearTimeout(timer);
+    const handleWake = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchOrders();
+      }
+    };
+
+    window.addEventListener('focus', handleWake);
+    window.addEventListener('pageshow', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
+
+    const poller = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && isLikelyOnline()) {
+        void fetchOrders();
+      }
+    }, 15000);
+
+    return () => {
+      window.clearTimeout(bootstrap);
+      window.clearInterval(poller);
+      window.removeEventListener('focus', handleWake);
+      window.removeEventListener('pageshow', handleWake);
+      document.removeEventListener('visibilitychange', handleWake);
+    };
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+
+    const channel = supabase
+      .channel('orders-rekap-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        const nextOrder = payload.new as Order;
+
+        if (payload.eventType === 'INSERT') {
+          upsertLocalOrder(nextOrder);
+          setOrders((prev) => upsertListOrder(prev, nextOrder));
+          return;
+        }
+
+        if (payload.eventType === 'UPDATE') {
+          upsertLocalOrder(nextOrder);
+          setOrders((prev) => upsertListOrder(prev, nextOrder));
+          return;
+        }
+
+        if (payload.eventType === 'DELETE') {
+          const deleted = payload.old as Order;
+          removeLocalOrder(deleted.id);
+          setOrders((prev) => prev.filter((order) => order.id !== deleted.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isOnline, upsertListOrder]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
