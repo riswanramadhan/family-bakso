@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart, ChefHat, BarChart3 } from 'lucide-react';
+import { ShoppingCart, ChefHat, BarChart3, RefreshCw } from 'lucide-react';
 import BottomNav from '@/components/shared/BottomNav';
+import OfflineBootstrap from '@/components/shared/OfflineBootstrap';
+import ConnectionStatus from '@/components/shared/ConnectionStatus';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -37,12 +39,15 @@ const navItems = [
   { href: '/kasir', label: 'Kasir', Icon: ShoppingCart },
   { href: '/dapur', label: 'Dapur', Icon: ChefHat },
   { href: '/rekap', label: 'Rekap', Icon: BarChart3 },
+  { href: '/sinkronisasi', label: 'Sinkronisasi', Icon: RefreshCw },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
       <body className="min-h-screen bg-bg text-text-primary antialiased">
+        <OfflineBootstrap />
+        <ConnectionStatus />
         <div className="mx-auto flex min-h-screen w-full max-w-[1600px] bg-[radial-gradient(circle_at_top_left,rgba(0,122,255,0.06),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(90,200,250,0.05),transparent_45%)]">
           <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-surface/90 p-5 backdrop-blur-xl lg:block">
             <div className="mb-8 flex items-center gap-3">

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, ChefHat, BarChart3 } from 'lucide-react';
+import { ShoppingCart, ChefHat, BarChart3, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/kasir', label: 'Kasir', Icon: ShoppingCart },
   { href: '/dapur', label: 'Dapur', Icon: ChefHat },
   { href: '/rekap', label: 'Rekap', Icon: BarChart3 },
+  { href: '/sinkronisasi', label: 'Sync', Icon: RefreshCw },
 ];
 
 export default function BottomNav() {

@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/shared/Header';
 import KitchenBoard from '@/components/dapur/KitchenBoard';
 import Toast from '@/components/shared/Toast';
 import IOSAlert from '@/components/shared/IOSAlert';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { supabase } from '@/lib/supabase';
+import { isLikelyOnline, setLocalOrderStatus, upsertLocalOrder } from '@/lib/offline-orders';
 import { Order, Toast as ToastType } from '@/lib/types';
 import { generateId, formatOrderNumber } from '@/lib/utils';
 
@@ -15,10 +16,31 @@ export default function DapurPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'preparing' | 'done'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastType[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
   const [cancelAlert, setCancelAlert] = useState<{ open: boolean; order: Order | null }>({
     open: false,
     order: null,
   });
+
+  useEffect(() => {
+    const onConnectivityChange = async () => {
+      const nextOnline = isLikelyOnline();
+      setIsOnline(nextOnline);
+
+      if (nextOnline) {
+        await retry();
+      }
+    };
+
+    onConnectivityChange();
+    window.addEventListener('online', onConnectivityChange);
+    window.addEventListener('offline', onConnectivityChange);
+
+    return () => {
+      window.removeEventListener('online', onConnectivityChange);
+      window.removeEventListener('offline', onConnectivityChange);
+    };
+  }, [retry]);
 
   const pendingCount = useMemo(() => orders.filter((order) => order.status === 'pending').length, [orders]);
   const preparingCount = useMemo(() => orders.filter((order) => order.status === 'preparing').length, [orders]);
@@ -37,6 +59,18 @@ export default function DapurPage() {
     const optimistic = { ...order, status: nextStatus } as Order;
     updateLocalOrder(optimistic);
 
+    if (!isLikelyOnline()) {
+      const localUpdated = setLocalOrderStatus(order.id, nextStatus);
+      setUpdatingId(null);
+
+      if (localUpdated) {
+        updateLocalOrder(localUpdated);
+      }
+
+      pushToast('Perubahan disimpan offline. Sinkronkan manual dari halaman Sinkronisasi.', 'info');
+      return;
+    }
+
     const { data, error: updateError } = await supabase
       .from('orders')
       .update({ status: nextStatus })
@@ -47,11 +81,18 @@ export default function DapurPage() {
     setUpdatingId(null);
 
     if (updateError || !data) {
-      pushToast('Koneksi bermasalah, coba lagi', 'error');
-      updateLocalOrder(order);
+      const localUpdated = setLocalOrderStatus(order.id, nextStatus);
+      if (localUpdated) {
+        updateLocalOrder(localUpdated);
+        pushToast('Koneksi bermasalah. Perubahan masuk antrean offline.', 'info');
+      } else {
+        pushToast('Koneksi bermasalah, coba lagi', 'error');
+        updateLocalOrder(order);
+      }
       return;
     }
 
+    upsertLocalOrder(data as Order);
     updateLocalOrder(data as Order);
 
     if (nextStatus === 'cancelled') {
@@ -76,6 +117,11 @@ export default function DapurPage() {
 
   return (
     <div className="space-y-4">
+      {!isOnline ? (
+        <div className="card border-warning/20 bg-warning/5 p-3">
+          <p className="text-xs font-semibold text-warning">Mode offline aktif. Update status masuk antrean dan dikirim saat tombol sinkron ditekan.</p>
+        </div>
+      ) : null}
       <Header
         title="Dapur"
         subtitle={`Antri: ${pendingCount} | Diproses: ${preparingCount}`}

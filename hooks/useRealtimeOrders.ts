@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, removeLocalOrder, upsertLocalOrder } from '@/lib/offline-orders';
 import { Order } from '@/lib/types';
 import { playNotificationSound, sortByCreatedAtDesc } from '@/lib/utils';
 
@@ -23,6 +24,12 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     setIsLoading(true);
     setError(null);
 
+    if (!isLikelyOnline()) {
+      setOrders(getLocalOrders());
+      setIsLoading(false);
+      return;
+    }
+
     const { data, error: fetchError } = await supabase
       .from('orders')
       .select('*')
@@ -30,12 +37,15 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
       .limit(200);
 
     if (fetchError) {
-      setError('Koneksi bermasalah, coba lagi');
+      setOrders(getLocalOrders());
+      setError('Koneksi cloud bermasalah, menampilkan data offline');
       setIsLoading(false);
       return;
     }
 
-    setOrders((data ?? []) as Order[]);
+    const merged = mergeServerAndLocalOrders((data ?? []) as Order[]);
+    setOrders(merged);
+    merged.forEach((order) => upsertLocalOrder(order));
     setIsLoading(false);
   }, []);
 
@@ -44,11 +54,19 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
       void fetchInitial();
     }, 0);
 
+    if (!isLikelyOnline()) {
+      hasMountedRef.current = true;
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+
     const channel = supabase
       .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         const nextOrder = payload.new as Order;
         if (payload.eventType === 'INSERT') {
+          upsertLocalOrder(nextOrder);
           setOrders((prev) => sortByCreatedAtDesc([nextOrder, ...prev]));
           if (hasMountedRef.current) {
             playNotificationSound();
@@ -56,11 +74,13 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
         }
 
         if (payload.eventType === 'UPDATE') {
+          upsertLocalOrder(nextOrder);
           setOrders((prev) => prev.map((order) => (order.id === nextOrder.id ? nextOrder : order)));
         }
 
         if (payload.eventType === 'DELETE') {
           const deleted = payload.old as Order;
+          removeLocalOrder(deleted.id);
           setOrders((prev) => prev.filter((order) => order.id !== deleted.id));
         }
       })
@@ -75,6 +95,7 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
   }, [fetchInitial]);
 
   const updateLocalOrder = useCallback((updatedOrder: Order) => {
+    upsertLocalOrder(updatedOrder);
     setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)));
   }, []);
 

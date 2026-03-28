@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, upsertLocalOrder } from '@/lib/offline-orders';
 import { MenuItemSales, Order, OrderFilters, OrderStats } from '@/lib/types';
 import { getDateRange, orderMatchesSearch } from '@/lib/utils';
 
@@ -35,6 +36,12 @@ export function useOrders(): UseOrdersResult {
     setIsLoading(true);
     setError(null);
 
+    if (!isLikelyOnline()) {
+      setOrders(getLocalOrders());
+      setIsLoading(false);
+      return;
+    }
+
     let start: Date;
     let end: Date;
 
@@ -55,12 +62,15 @@ export function useOrders(): UseOrdersResult {
       .order('created_at', { ascending: false });
 
     if (fetchError) {
-      setError('Koneksi bermasalah, coba lagi');
+      setOrders(getLocalOrders());
+      setError('Koneksi cloud bermasalah, menampilkan data offline');
       setIsLoading(false);
       return;
     }
 
-    setOrders((data ?? []) as Order[]);
+    const merged = mergeServerAndLocalOrders((data ?? []) as Order[]);
+    setOrders(merged);
+    merged.forEach((order) => upsertLocalOrder(order));
     setIsLoading(false);
   }, [filters.dateRange, filters.endDate, filters.startDate]);
 

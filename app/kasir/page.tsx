@@ -9,6 +9,7 @@ import PaymentModal from '@/components/kasir/PaymentModal';
 import ReceiptModal from '@/components/kasir/ReceiptModal';
 import MotivationalPopup from '@/components/kasir/MotivationalPopup';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createOfflineOrder, getTodayLocalOrderCount, isLikelyOnline, upsertLocalOrder } from '@/lib/offline-orders';
 import { Order, Toast as ToastType } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { useOrderStore } from '@/store/orderStore';
@@ -45,6 +46,7 @@ export default function KasirPage() {
   const [toasts, setToasts] = useState<ToastType[]>([]);
   const [showMotivation, setShowMotivation] = useState(false);
   const [motivationMessage, setMotivationMessage] = useState(MOTIVATION_MESSAGES[0]);
+  const [isOnline, setIsOnline] = useState(isLikelyOnline);
 
   const subtotal = getSubtotal();
 
@@ -57,7 +59,10 @@ export default function KasirPage() {
   };
 
   const fetchTodayCount = async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !isLikelyOnline()) {
+      setTodayOrderCount(getTodayLocalOrderCount());
+      return;
+    }
 
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -69,15 +74,31 @@ export default function KasirPage() {
 
     if (!error) {
       setTodayOrderCount(count ?? 0);
+      return;
     }
+
+    setTodayOrderCount(getTodayLocalOrderCount());
   };
 
   useEffect(() => {
+    const onConnectivityChange = async () => {
+      const nextOnline = isLikelyOnline();
+      setIsOnline(nextOnline);
+      await fetchTodayCount();
+    };
+
+    window.addEventListener('online', onConnectivityChange);
+    window.addEventListener('offline', onConnectivityChange);
+
     const timer = window.setTimeout(() => {
       void fetchTodayCount();
     }, 0);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('online', onConnectivityChange);
+      window.removeEventListener('offline', onConnectivityChange);
+    };
   }, []);
 
   const handleConfirmPayment = async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
@@ -88,13 +109,6 @@ export default function KasirPage() {
 
     if (paymentMethod === 'tunai' && (cashReceived ?? 0) < subtotal) {
       pushToast('Uang diterima kurang dari total', 'error');
-      return;
-    }
-
-    // Check if Supabase is configured
-    if (!isSupabaseConfigured) {
-      pushToast('Database belum dikonfigurasi. Cek environment variables.', 'error');
-      console.error('Supabase not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
       return;
     }
 
@@ -113,37 +127,51 @@ export default function KasirPage() {
       subtotal,
       total: subtotal,
       payment_method: paymentMethod,
-      cash_received: paymentMethod === 'tunai' ? (cashReceived ?? 0) : null,
-      change_amount: paymentMethod === 'tunai' ? Math.max(0, (cashReceived ?? 0) - subtotal) : null,
-      notes: orderNotes || null,
-      status: 'pending',
+      cash_received: paymentMethod === 'tunai' ? (cashReceived ?? 0) : undefined,
+      change_amount: paymentMethod === 'tunai' ? Math.max(0, (cashReceived ?? 0) - subtotal) : undefined,
+      notes: orderNotes || undefined,
+      status: 'pending' as const,
     };
+
+    const fallbackOffline = () => {
+      const offlineOrder = createOfflineOrder(payload);
+      setCurrentOrder(offlineOrder);
+      setPaymentOpen(false);
+      setReceiptOpen(true);
+      setTodayOrderCount((prev) => prev + 1);
+      pushToast('Tersimpan offline. Buka halaman Sinkronisasi untuk kirim data ke cloud.', 'info');
+      setLoadingPayment(false);
+    };
+
+    if (!isSupabaseConfigured || !isOnline) {
+      fallbackOffline();
+      return;
+    }
 
     try {
       const { data, error } = await supabase.from('orders').insert(payload).select('*').single();
 
-      setLoadingPayment(false);
-
       if (error) {
-        console.error('Supabase error:', error);
-        pushToast(`Error: ${error.message || 'Koneksi bermasalah'}`, 'error');
+        console.error('Supabase error, fallback to offline queue:', error);
+        fallbackOffline();
         return;
       }
 
       if (!data) {
-        pushToast('Data tidak ditemukan setelah insert', 'error');
+        fallbackOffline();
         return;
       }
 
+      upsertLocalOrder(data as Order);
       setCurrentOrder(data as Order);
       setPaymentOpen(false);
       setReceiptOpen(true);
       setTodayOrderCount((prev) => prev + 1);
       pushToast('Pembayaran berhasil!', 'success');
-    } catch (err) {
       setLoadingPayment(false);
-      console.error('Unexpected error:', err);
-      pushToast('Terjadi kesalahan yang tidak terduga', 'error');
+    } catch (err) {
+      console.error('Unexpected error, fallback to offline queue:', err);
+      fallbackOffline();
     }
   };
 
@@ -161,11 +189,13 @@ export default function KasirPage() {
     <div className="space-y-4">
       <Header title="Kasir" subtitle="Sistem Point of Sale" todayOrderCount={todayOrderCount} icon="cart" />
 
-      {/* Supabase configuration warning */}
-      {!isSupabaseConfigured && (
+      {/* Offline/sync warning */}
+      {(!isSupabaseConfigured || !isOnline) && (
         <div className="card border-warning/20 bg-warning/5 p-4">
           <p className="text-sm font-medium text-warning">
-            Database belum dikonfigurasi. Tambahkan NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY di file .env.local
+            {!isSupabaseConfigured
+              ? 'Database cloud belum dikonfigurasi. Semua transaksi disimpan lokal di perangkat.'
+              : 'Mode offline aktif. Transaksi disimpan lokal dan dikirim saat tombol sinkron ditekan.'}
           </p>
         </div>
       )}
