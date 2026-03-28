@@ -56,6 +56,8 @@ export interface CloudPullResult {
   queueKept: number;
 }
 
+const TRANSIENT_MISSING_GRACE_MS = 90_000;
+
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
@@ -218,6 +220,7 @@ export function getTodayLocalOrderCount(): number {
 
 export function mergeServerAndLocalOrders(serverOrders: Order[]): Order[] {
   const localOrders = getLocalOrders();
+  const now = Date.now();
   const queue = getQueue();
   const pendingLocalCreateIds = new Set(
     queue
@@ -234,8 +237,20 @@ export function mergeServerAndLocalOrders(serverOrders: Order[]): Order[] {
   localOrders.forEach((order) => {
     const isPendingLocalCreate = order.id.startsWith('local-') && pendingLocalCreateIds.has(order.id);
     const isPendingStatusOnly = !order.id.startsWith('local-') && pendingStatusIds.has(order.id);
+    const isMissingInServer = !serverMap.has(order.id);
+    const createdAtMs = new Date(order.created_at).getTime();
+    const updatedAtMs = new Date(order.updated_at).getTime();
+    const hasRecentTimestamp =
+      (Number.isFinite(createdAtMs) && now - createdAtMs <= TRANSIENT_MISSING_GRACE_MS) ||
+      (Number.isFinite(updatedAtMs) && now - updatedAtMs <= TRANSIENT_MISSING_GRACE_MS);
 
-    if (isPendingLocalCreate || (!serverMap.has(order.id) && isPendingStatusOnly)) {
+    // Keep very recent pending/preparing local rows temporarily if they are not in server snapshot yet.
+    const isTransientRecentMissing =
+      isMissingInServer &&
+      hasRecentTimestamp &&
+      (order.status === 'pending' || order.status === 'preparing');
+
+    if (isPendingLocalCreate || (isMissingInServer && isPendingStatusOnly) || isTransientRecentMissing) {
       serverMap.set(order.id, order);
     }
   });

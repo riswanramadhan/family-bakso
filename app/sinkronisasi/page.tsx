@@ -69,8 +69,7 @@ export default function SinkronisasiPage() {
     if (!('serviceWorker' in navigator)) return;
 
     const onControllerChange = () => {
-      pushToast('Update aplikasi aktif. Halaman dimuat ulang.', 'success');
-      window.location.reload();
+      pushToast('Update aplikasi aktif. Perubahan akan diterapkan mulus tanpa reload paksa.', 'success');
     };
 
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);

@@ -42,6 +42,24 @@ export default function DapurPage() {
     };
   }, [retry]);
 
+  useEffect(() => {
+    const onWake = () => {
+      if (document.visibilityState === 'visible') {
+        void retry();
+      }
+    };
+
+    window.addEventListener('focus', onWake);
+    window.addEventListener('pageshow', onWake);
+    document.addEventListener('visibilitychange', onWake);
+
+    return () => {
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('pageshow', onWake);
+      document.removeEventListener('visibilitychange', onWake);
+    };
+  }, [retry]);
+
   const pendingCount = useMemo(() => orders.filter((order) => order.status === 'pending').length, [orders]);
   const preparingCount = useMemo(() => orders.filter((order) => order.status === 'preparing').length, [orders]);
 

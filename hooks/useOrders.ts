@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getLocalOrders, isLikelyOnline, mergeServerAndLocalOrders, removeLocalOrder, upsertLocalOrder } from '@/lib/offline-orders';
 import { MenuItemSales, Order, OrderFilters, OrderStats } from '@/lib/types';
@@ -32,6 +32,7 @@ export function useOrders(): UseOrdersResult {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(isLikelyOnline);
   const [filters, setFiltersState] = useState<OrderFilters>(defaultFilters);
+  const hasLoadedOnceRef = useRef(false);
 
   const upsertListOrder = useCallback((rows: Order[], nextOrder: Order): Order[] => {
     const exists = rows.some((item) => item.id === nextOrder.id);
@@ -41,13 +42,20 @@ export function useOrders(): UseOrdersResult {
     return sortByCreatedAtDesc(rows.map((item) => (item.id === nextOrder.id ? nextOrder : item)));
   }, []);
 
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchOrders = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? hasLoadedOnceRef.current;
+
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     if (!isOnline) {
       setOrders(getLocalOrders());
-      setIsLoading(false);
+      hasLoadedOnceRef.current = true;
+      if (!silent) {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -73,14 +81,20 @@ export function useOrders(): UseOrdersResult {
     if (fetchError) {
       setOrders(getLocalOrders());
       setError('Koneksi cloud bermasalah, menampilkan data offline');
-      setIsLoading(false);
+      hasLoadedOnceRef.current = true;
+      if (!silent) {
+        setIsLoading(false);
+      }
       return;
     }
 
     const merged = mergeServerAndLocalOrders((data ?? []) as Order[]);
     setOrders(merged);
     merged.forEach((order) => upsertLocalOrder(order));
-    setIsLoading(false);
+    hasLoadedOnceRef.current = true;
+    if (!silent) {
+      setIsLoading(false);
+    }
   }, [filters.dateRange, filters.endDate, filters.startDate, isOnline]);
 
   useEffect(() => {
@@ -103,7 +117,7 @@ export function useOrders(): UseOrdersResult {
 
     const handleWake = () => {
       if (document.visibilityState === 'visible') {
-        void fetchOrders();
+        void fetchOrders({ silent: true });
       }
     };
 
@@ -113,9 +127,9 @@ export function useOrders(): UseOrdersResult {
 
     const poller = window.setInterval(() => {
       if (document.visibilityState === 'visible' && isLikelyOnline()) {
-        void fetchOrders();
+        void fetchOrders({ silent: true });
       }
-    }, 15000);
+    }, 5000);
 
     return () => {
       window.clearTimeout(bootstrap);

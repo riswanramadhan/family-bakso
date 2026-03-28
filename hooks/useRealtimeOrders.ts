@@ -20,6 +20,7 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(isLikelyOnline);
   const hasMountedRef = useRef(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const upsertListOrder = useCallback((rows: Order[], nextOrder: Order): Order[] => {
     const exists = rows.some((item) => item.id === nextOrder.id);
@@ -29,13 +30,20 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     return sortByCreatedAtDesc(rows.map((item) => (item.id === nextOrder.id ? nextOrder : item)));
   }, []);
 
-  const fetchInitial = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchInitial = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? hasLoadedOnceRef.current;
+
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     if (!isOnline) {
       setOrders(getLocalOrders());
-      setIsLoading(false);
+      hasLoadedOnceRef.current = true;
+      if (!silent) {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -48,14 +56,20 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
     if (fetchError) {
       setOrders(getLocalOrders());
       setError('Koneksi cloud bermasalah, menampilkan data offline');
-      setIsLoading(false);
+      hasLoadedOnceRef.current = true;
+      if (!silent) {
+        setIsLoading(false);
+      }
       return;
     }
 
     const merged = mergeServerAndLocalOrders((data ?? []) as Order[]);
     setOrders(merged);
     merged.forEach((order) => upsertLocalOrder(order));
-    setIsLoading(false);
+    hasLoadedOnceRef.current = true;
+    if (!silent) {
+      setIsLoading(false);
+    }
   }, [isOnline]);
 
   useEffect(() => {
@@ -97,7 +111,7 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
 
     const handleWake = () => {
       if (document.visibilityState === 'visible') {
-        void fetchInitial();
+        void fetchInitial({ silent: true });
       }
     };
 
@@ -107,9 +121,9 @@ export function useRealtimeOrders(): UseRealtimeOrdersResult {
 
     const poller = window.setInterval(() => {
       if (document.visibilityState === 'visible' && isLikelyOnline()) {
-        void fetchInitial();
+        void fetchInitial({ silent: true });
       }
-    }, 10000);
+    }, 4000);
 
     return () => {
       window.clearTimeout(bootstrap);
