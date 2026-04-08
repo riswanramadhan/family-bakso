@@ -88,7 +88,7 @@ export default function OrderSummary({
             type="text"
             value={customerName}
             onChange={(event) => onCustomerNameChange(event.target.value)}
-            placeholder="Contoh: Pak Budi"
+            placeholder="Contoh: Riswan Kece"
             aria-label="Nama customer"
             className="h-11 border-primary/25 bg-white text-sm font-medium"
           />
