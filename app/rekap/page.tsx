@@ -1,14 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Calendar, Search, TrendingUp, Clock, Flame, CheckCircle2, XCircle, LayoutGrid } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import ExportBar from '@/components/rekap/ExportBar';
 import OrderTable from '@/components/rekap/OrderTable';
 import SummaryStats from '@/components/rekap/SummaryStats';
+import Toast from '@/components/shared/Toast';
+import PaymentModal from '@/components/kasir/PaymentModal';
 import { useOrders } from '@/hooks/useOrders';
-import { Order } from '@/lib/types';
-import { asPercentage, formatDateInput, cn } from '@/lib/utils';
+import { isLikelyOnline, setLocalOrderPayment, upsertLocalOrder } from '@/lib/offline-orders';
+import { supabase } from '@/lib/supabase';
+import { Order, Toast as ToastType } from '@/lib/types';
+import { asPercentage, formatDateInput, cn, formatOrderNumber, generateId } from '@/lib/utils';
 
 const dateRangeOptions = [
   { key: 'today', label: 'Hari Ini' },
@@ -29,8 +33,89 @@ const statusOptions = [
 export default function RekapPage() {
   const { filteredOrders, stats, itemPerformance, isLoading, error, refetch, filters, setFilters } = useOrders();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [toasts, setToasts] = useState<ToastType[]>([]);
 
   const maxQty = useMemo(() => Math.max(1, ...itemPerformance.map((item) => item.quantitySold)), [itemPerformance]);
+
+  const pushToast = useCallback((message: string, type: ToastType['type']) => {
+    const id = generateId();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3500);
+  }, []);
+
+  const handleEditPayment = useCallback((order: Order) => {
+    setEditingOrder(order);
+  }, []);
+
+  const handleConfirmEditPayment = useCallback(async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
+    if (!editingOrder) return;
+
+    if (paymentMethod === 'tunai' && (cashReceived ?? 0) < editingOrder.total) {
+      pushToast('Uang tunai kurang dari total order', 'error');
+      return;
+    }
+
+    setUpdatingPayment(true);
+
+    const nextCash = paymentMethod === 'tunai' ? (cashReceived ?? 0) : null;
+    const nextChange = paymentMethod === 'tunai' ? Math.max(0, (cashReceived ?? 0) - editingOrder.total) : null;
+
+    const fallbackOffline = async () => {
+      const localUpdated = setLocalOrderPayment(editingOrder.id, {
+        payment_method: paymentMethod,
+        cash_received: nextCash,
+        change_amount: nextChange,
+      });
+
+      if (localUpdated) {
+        if (selectedOrder?.id === localUpdated.id) {
+          setSelectedOrder(localUpdated);
+        }
+        setEditingOrder(null);
+        await refetch();
+        pushToast('Pembayaran diperbarui offline dan akan tersinkron saat koneksi stabil.', 'info');
+      } else {
+        pushToast('Order tidak ditemukan saat update pembayaran.', 'error');
+      }
+
+      setUpdatingPayment(false);
+    };
+
+    if (!isLikelyOnline()) {
+      await fallbackOffline();
+      return;
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('orders')
+      .update({
+        payment_method: paymentMethod,
+        cash_received: nextCash,
+        change_amount: nextChange,
+      })
+      .eq('id', editingOrder.id)
+      .select('*')
+      .single();
+
+    if (updateError || !data) {
+      await fallbackOffline();
+      return;
+    }
+
+    const updated = data as Order;
+    upsertLocalOrder(updated);
+    if (selectedOrder?.id === updated.id) {
+      setSelectedOrder(updated);
+    }
+    setEditingOrder(null);
+    await refetch();
+    pushToast(`Pembayaran ${formatOrderNumber(updated.order_number)} berhasil diperbarui.`, 'success');
+    setUpdatingPayment(false);
+  }, [editingOrder, pushToast, refetch, selectedOrder?.id]);
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -95,15 +180,15 @@ export default function RekapPage() {
 
         {/* Search and status filter */}
         <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
+          <div className="flex h-11 items-center gap-2 rounded-xl border border-border bg-white px-3">
+            <Search className="h-4 w-4 shrink-0 text-text-tertiary" />
             <input
               type="text"
               value={filters.search}
               onChange={(event) => setFilters({ search: event.target.value })}
               placeholder="Cari nomor order, customer, menu, metode..."
               aria-label="Cari order"
-              className="pl-10"
+              className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm focus:shadow-none"
             />
           </div>
 
@@ -147,7 +232,24 @@ export default function RekapPage() {
       <ExportBar orders={filteredOrders} stats={stats} itemPerformance={itemPerformance} selectedOrder={selectedOrder} />
 
       {/* Orders table */}
-      <OrderTable orders={filteredOrders} selectedOrder={selectedOrder} onSelectOrder={setSelectedOrder} />
+      <OrderTable
+        orders={filteredOrders}
+        selectedOrder={selectedOrder}
+        onSelectOrder={setSelectedOrder}
+        onEditPayment={handleEditPayment}
+      />
+
+      <PaymentModal
+        open={Boolean(editingOrder)}
+        total={editingOrder?.total ?? 0}
+        loading={updatingPayment}
+        title={editingOrder ? `Edit Pembayaran ${formatOrderNumber(editingOrder.order_number)}` : 'Edit Pembayaran'}
+        confirmLabel="Simpan Perubahan Pembayaran"
+        initialMethod={editingOrder?.payment_method}
+        initialCashReceived={editingOrder?.cash_received}
+        onClose={() => setEditingOrder(null)}
+        onConfirm={handleConfirmEditPayment}
+      />
 
       {/* Item Performance */}
       <section className="card space-y-4 p-4 sm:p-5">
@@ -188,6 +290,8 @@ export default function RekapPage() {
           )}
         </div>
       </section>
+
+      <Toast toasts={toasts} onClose={(id) => setToasts((prev) => prev.filter((toast) => toast.id !== id))} />
     </div>
   );
 }

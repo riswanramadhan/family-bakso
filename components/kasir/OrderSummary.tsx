@@ -75,16 +75,24 @@ export default function OrderSummary({
       {/* Order notes and summary - sticky at bottom */}
       <div className="mt-4 space-y-4 border-t border-border pt-4">
         {/* Customer name */}
-        <div className="relative">
-          <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
+          <label className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-primary" htmlFor="customer-name-input">
+            <User className="h-4 w-4" />
+            Nama Customer
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary">
+              disarankan
+            </span>
+          </label>
           <input
+            id="customer-name-input"
             type="text"
             value={customerName}
             onChange={(event) => onCustomerNameChange(event.target.value)}
-            placeholder="Nama customer (opsional)"
+            placeholder="Contoh: Pak Budi"
             aria-label="Nama customer"
-            className="h-11 pl-10 text-sm"
+            className="h-11 border-primary/25 bg-white text-sm font-medium"
           />
+          <p className="mt-2 text-xs text-text-secondary">Isi nama customer agar tim dapur lebih mudah saat memanggil pesanan jadi.</p>
         </div>
 
         {/* Order notes */}

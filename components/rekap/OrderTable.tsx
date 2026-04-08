@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, FileCheck, Clock, Flame, CheckCircle2, XCircle, Banknote, QrCode } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, FileCheck, Clock, Flame, CheckCircle2, XCircle, Banknote, Pencil, QrCode } from 'lucide-react';
 import { Order } from '@/lib/types';
 import { formatDateTime, formatOrderNumber, formatRupiah, cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface OrderTableProps {
   orders: Order[];
   selectedOrder: Order | null;
   onSelectOrder: (order: Order) => void;
+  onEditPayment: (order: Order) => void;
 }
 
 const PAGE_SIZE = 15;
@@ -28,7 +29,7 @@ function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
   return asc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />;
 }
 
-export default function OrderTable({ orders, selectedOrder, onSelectOrder }: OrderTableProps) {
+export default function OrderTable({ orders, selectedOrder, onSelectOrder, onEditPayment }: OrderTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
@@ -72,7 +73,7 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
   return (
     <section className="card overflow-hidden">
       <div className="border-b border-border px-4 py-3 text-xs text-text-tertiary">
-        Pilih order untuk export PDF, lalu buka detail jika ingin melihat item lengkap.
+        Pilih order untuk export PDF, atau gunakan tombol edit bayar jika customer ganti metode pembayaran.
       </div>
 
       <div className="grid gap-3 p-3 md:hidden">
@@ -106,7 +107,7 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   className="flex items-center justify-center gap-1 rounded-lg bg-surface-2 px-3 py-2 text-xs font-semibold transition-colors hover:bg-border"
@@ -125,6 +126,14 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                 >
                   <FileCheck className="h-3.5 w-3.5" />
                   {selectedOrder?.id === order.id ? 'Terpilih' : 'Pilih'}
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-1 rounded-lg bg-warning/10 px-3 py-2 text-xs font-semibold text-warning transition-colors hover:bg-warning/20"
+                  onClick={() => onEditPayment(order)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Bayar
                 </button>
               </div>
 
@@ -233,6 +242,14 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                         >
                           <FileCheck className="h-3 w-3" />
                           Pilih
+                        </button>
+                        <button
+                          type="button"
+                          className="flex h-8 items-center justify-center gap-1 rounded-lg bg-warning/10 px-3 text-xs font-semibold text-warning transition-colors hover:bg-warning/20"
+                          onClick={() => onEditPayment(order)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Edit Bayar
                         </button>
                       </div>
                     </td>
