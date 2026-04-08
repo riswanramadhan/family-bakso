@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, CloudOff, RefreshCw, Server } from 'lucide-react';
+import { AlertTriangle, Banknote, CheckCircle2, CloudOff, RefreshCw, Server } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import Toast from '@/components/shared/Toast';
 import IOSAlert from '@/components/shared/IOSAlert';
@@ -96,12 +96,17 @@ export default function SinkronisasiPage() {
         icon: RefreshCw,
       },
       {
+        label: 'Update pembayaran',
+        value: queueSummary.pendingPaymentUpdates,
+        icon: Banknote,
+      },
+      {
         label: 'Conflict',
         value: conflicts.length,
         icon: AlertTriangle,
       },
     ];
-  }, [conflicts.length, queueSummary.pendingCreates, queueSummary.pendingStatusUpdates, queueSummary.total]);
+  }, [conflicts.length, queueSummary.pendingCreates, queueSummary.pendingPaymentUpdates, queueSummary.pendingStatusUpdates, queueSummary.total]);
 
   const handleManualSync = async () => {
     if (!isLikelyOnline()) {

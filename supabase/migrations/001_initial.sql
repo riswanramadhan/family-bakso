@@ -22,6 +22,7 @@ CREATE TABLE orders (
   payment_method TEXT NOT NULL DEFAULT 'tunai' CHECK (payment_method IN ('tunai', 'qris')),
   cash_received INTEGER,
   change_amount INTEGER,
+  customer_name TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'preparing', 'done', 'cancelled')),
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -32,6 +33,7 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX idx_orders_order_number ON orders(order_number);
+CREATE INDEX idx_orders_customer_name ON orders(customer_name);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS) - PENTING!

@@ -66,6 +66,7 @@ export interface Order {
   payment_method: PaymentMethod;
   cash_received: number | null;
   change_amount: number | null;
+  customer_name: string | null;
   status: OrderStatus;
   notes: string | null;
   created_at: string;
@@ -80,6 +81,7 @@ export interface CreateOrderPayload {
   payment_method: PaymentMethod;
   cash_received?: number;
   change_amount?: number;
+  customer_name?: string;
   notes?: string;
 }
 
@@ -87,6 +89,7 @@ export interface CreateOrderInput {
   items: CartItem[];
   paymentMethod: PaymentMethod;
   cashReceived?: number;
+  customerName?: string;
   orderNotes?: string;
 }
 

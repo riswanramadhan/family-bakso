@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Loader2, Flame, CheckCircle2, X } from 'lucide-react';
+import { Loader2, Flame, CheckCircle2, User, X } from 'lucide-react';
 import { Order } from '@/lib/types';
 import { formatOrderNumber, formatTime, getRelativeTime } from '@/lib/utils';
 import StatusBadge from '@/components/dapur/StatusBadge';
@@ -15,6 +15,8 @@ interface OrderCardProps {
 }
 
 export default function OrderCard({ order, isUpdating, onStart, onFinish, onCancel }: OrderCardProps) {
+  const customerName = order.customer_name?.trim();
+
   return (
     <article className="card animate-slideIn space-y-3 p-3.5 sm:p-4">
       <div className="flex items-start justify-between gap-2">
@@ -23,6 +25,12 @@ export default function OrderCard({ order, isUpdating, onStart, onFinish, onCanc
           <p className="text-xs text-text-secondary">
             {formatTime(order.created_at)} · {getRelativeTime(order.created_at)}
           </p>
+          {customerName ? (
+            <p className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              <User className="h-3 w-3" />
+              <span className="truncate">{customerName}</span>
+            </p>
+          ) : null}
         </div>
         <StatusBadge status={order.status} />
       </div>

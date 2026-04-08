@@ -11,6 +11,10 @@ interface PaymentModalProps {
   open: boolean;
   total: number;
   loading: boolean;
+  title?: string;
+  confirmLabel?: string;
+  initialMethod?: PaymentMethod;
+  initialCashReceived?: number | null;
   onClose: () => void;
   onConfirm: (method: PaymentMethod, cashReceived?: number) => void;
 }
@@ -27,11 +31,48 @@ const parseNumber = (value: string): string => {
   return value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 };
 
-export default function PaymentModal({ open, total, loading, onClose, onConfirm }: PaymentModalProps) {
+export default function PaymentModal({
+  open,
+  total,
+  loading,
+  title = 'Pembayaran',
+  confirmLabel,
+  initialMethod,
+  initialCashReceived,
+  onClose,
+  onConfirm,
+}: PaymentModalProps) {
   const [method, setMethod] = useState<PaymentMethod>('tunai');
   const [cashInput, setCashInput] = useState<string>('');
   const [displayValue, setDisplayValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const nextMethod = initialMethod ?? 'tunai';
+    setMethod(nextMethod);
+
+    if (nextMethod === 'tunai') {
+      const normalizedCash =
+        typeof initialCashReceived === 'number' && Number.isFinite(initialCashReceived)
+          ? Math.max(0, initialCashReceived)
+          : 0;
+
+      if (normalizedCash > 0) {
+        const raw = `${normalizedCash}`;
+        setCashInput(raw);
+        setDisplayValue(formatNumber(raw));
+      } else {
+        setCashInput('');
+        setDisplayValue('');
+      }
+      return;
+    }
+
+    setCashInput('');
+    setDisplayValue('');
+  }, [initialCashReceived, initialMethod, open]);
 
   useEffect(() => {
     if (open && method === 'tunai') {
@@ -69,7 +110,7 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
         <div className="animate-scaleIn card relative flex h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-b-none sm:h-auto sm:max-h-[90vh] sm:rounded-b-[var(--radius-lg)] lg:max-w-3xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-5 py-4 md:px-6">
-            <h3 className="text-xl font-bold">Pembayaran</h3>
+            <h3 className="text-xl font-bold">{title}</h3>
             <button
               type="button"
               onClick={onClose}
@@ -247,7 +288,7 @@ export default function PaymentModal({ open, total, loading, onClose, onConfirm 
               disabled={loading || isInvalidCash}
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-              {method === 'qris' ? 'Konfirmasi Pembayaran' : 'Selesai & Cetak Struk'}
+              {confirmLabel ?? (method === 'qris' ? 'Konfirmasi Pembayaran' : 'Selesai & Cetak Struk')}
             </button>
           </div>
         </div>

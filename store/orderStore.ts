@@ -7,11 +7,13 @@ import { calculateOrderTotals, generateId } from '@/lib/utils';
 interface OrderStore {
   cartItems: CartItem[];
   orderNotes: string;
+  customerName: string;
   addItem: (menuItem: MenuItem, addOns?: SelectedAddOn[], quantity?: number) => void;
   removeItem: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   updateItemNotes: (cartItemId: string, notes: string) => void;
   setOrderNotes: (notes: string) => void;
+  setCustomerName: (name: string) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTotal: () => number;
@@ -26,6 +28,7 @@ const calcUnitPrice = (basePrice: number, addOns: SelectedAddOn[]) => {
 export const useOrderStore = create<OrderStore>((set, get) => ({
   cartItems: [],
   orderNotes: '',
+  customerName: '',
   addItem: (menuItem, addOns = [], quantity = 1) => {
     const unitPrice = calcUnitPrice(menuItem.basePrice, addOns);
 
@@ -95,7 +98,8 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     }));
   },
   setOrderNotes: (notes) => set({ orderNotes: notes }),
-  clearCart: () => set({ cartItems: [], orderNotes: '' }),
+  setCustomerName: (name) => set({ customerName: name }),
+  clearCart: () => set({ cartItems: [], orderNotes: '', customerName: '' }),
   getSubtotal: () => calculateOrderTotals(get().cartItems).subtotal,
   getTotal: () => calculateOrderTotals(get().cartItems).total,
   getItemCount: () => get().cartItems.reduce((sum, item) => sum + item.quantity, 0),

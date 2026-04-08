@@ -1,7 +1,7 @@
 'use client';
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { CreateOrderPayload, Order, OrderStatus } from '@/lib/types';
+import { CreateOrderPayload, Order, OrderStatus, PaymentMethod } from '@/lib/types';
 import { sortByCreatedAtDesc } from '@/lib/utils';
 
 const LOCAL_ORDERS_KEY = 'fb_pos_orders';
@@ -25,7 +25,17 @@ interface QueueStatusItem {
   localUpdatedAt: string;
 }
 
-type QueueItem = QueueCreateItem | QueueStatusItem;
+interface QueuePaymentItem {
+  id: string;
+  type: 'payment';
+  orderId: string;
+  payment_method: PaymentMethod;
+  cash_received: number | null;
+  change_amount: number | null;
+  localUpdatedAt: string;
+}
+
+type QueueItem = QueueCreateItem | QueueStatusItem | QueuePaymentItem;
 
 export interface SyncConflict {
   id: string;
@@ -42,6 +52,7 @@ export interface SyncQueueSummary {
   total: number;
   pendingCreates: number;
   pendingStatusUpdates: number;
+  pendingPaymentUpdates: number;
 }
 
 export interface SyncResult {
@@ -91,6 +102,12 @@ function queueItem(item: QueueItem): void {
 
   if (item.type === 'status') {
     const compacted = queue.filter((existing) => !(existing.type === 'status' && existing.orderId === item.orderId));
+    saveQueue([...compacted, item]);
+    return;
+  }
+
+  if (item.type === 'payment') {
+    const compacted = queue.filter((existing) => !(existing.type === 'payment' && existing.orderId === item.orderId));
     saveQueue([...compacted, item]);
     return;
   }
@@ -170,6 +187,7 @@ export function createOfflineOrder(payload: CreateOrderPayload & { status: Order
     payment_method: payload.payment_method,
     cash_received: payload.cash_received ?? null,
     change_amount: payload.change_amount ?? null,
+    customer_name: payload.customer_name ?? null,
     status: payload.status,
     notes: payload.notes ?? null,
     created_at: nowIso,
@@ -211,6 +229,41 @@ export function setLocalOrderStatus(orderId: string, status: OrderStatus): Order
   return updated;
 }
 
+export function setLocalOrderPayment(
+  orderId: string,
+  payment: {
+    payment_method: PaymentMethod;
+    cash_received: number | null;
+    change_amount: number | null;
+  }
+): Order | null {
+  const orders = getLocalOrders();
+  const target = orders.find((order) => order.id === orderId);
+  if (!target) return null;
+
+  const updated: Order = {
+    ...target,
+    payment_method: payment.payment_method,
+    cash_received: payment.cash_received,
+    change_amount: payment.change_amount,
+    updated_at: new Date().toISOString(),
+  };
+
+  saveOrders(orders.map((order) => (order.id === orderId ? updated : order)));
+
+  queueItem({
+    id: makeQueueId(),
+    type: 'payment',
+    orderId,
+    payment_method: updated.payment_method,
+    cash_received: updated.cash_received,
+    change_amount: updated.change_amount,
+    localUpdatedAt: updated.updated_at,
+  });
+
+  return updated;
+}
+
 export function getTodayLocalOrderCount(): number {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -232,11 +285,17 @@ export function mergeServerAndLocalOrders(serverOrders: Order[]): Order[] {
       .filter((item): item is QueueStatusItem => item.type === 'status')
       .map((item) => item.orderId)
   );
+  const pendingPaymentIds = new Set(
+    queue
+      .filter((item): item is QueuePaymentItem => item.type === 'payment')
+      .map((item) => item.orderId)
+  );
   const serverMap = new Map(serverOrders.map((order) => [order.id, order]));
 
   localOrders.forEach((order) => {
     const isPendingLocalCreate = order.id.startsWith('local-') && pendingLocalCreateIds.has(order.id);
     const isPendingStatusOnly = !order.id.startsWith('local-') && pendingStatusIds.has(order.id);
+    const isPendingPaymentOnly = !order.id.startsWith('local-') && pendingPaymentIds.has(order.id);
     const isMissingInServer = !serverMap.has(order.id);
     const createdAtMs = new Date(order.created_at).getTime();
     const updatedAtMs = new Date(order.updated_at).getTime();
@@ -250,7 +309,7 @@ export function mergeServerAndLocalOrders(serverOrders: Order[]): Order[] {
       hasRecentTimestamp &&
       (order.status === 'pending' || order.status === 'preparing');
 
-    if (isPendingLocalCreate || (isMissingInServer && isPendingStatusOnly) || isTransientRecentMissing) {
+    if (isPendingLocalCreate || (isMissingInServer && (isPendingStatusOnly || isPendingPaymentOnly)) || isTransientRecentMissing) {
       serverMap.set(order.id, order);
     }
   });
@@ -284,6 +343,31 @@ export async function syncQueuedOrders(): Promise<SyncResult> {
       idMap.set(item.localOrderId, serverOrder.id);
       removeLocalOrder(item.localOrderId);
       upsertLocalOrder(serverOrder);
+      synced += 1;
+      continue;
+    }
+
+    if (item.type === 'payment') {
+      const mappedId = idMap.get(item.orderId);
+      const targetId = mappedId ?? item.orderId;
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          payment_method: item.payment_method,
+          cash_received: item.cash_received,
+          change_amount: item.change_amount,
+        })
+        .eq('id', targetId)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        nextQueue.push({ ...item, orderId: targetId });
+        continue;
+      }
+
+      upsertLocalOrder(data as Order);
       synced += 1;
       continue;
     }
@@ -376,6 +460,7 @@ export function getSyncQueueSummary(): SyncQueueSummary {
     total: queue.length,
     pendingCreates: queue.filter((item) => item.type === 'create').length,
     pendingStatusUpdates: queue.filter((item) => item.type === 'status').length,
+    pendingPaymentUpdates: queue.filter((item) => item.type === 'payment').length,
   };
 }
 

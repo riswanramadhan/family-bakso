@@ -85,6 +85,9 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-primary">{formatOrderNumber(order.order_number)}</p>
                   <p className="text-xs text-text-secondary">{formatDateTime(order.created_at)}</p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Pelanggan: <span className="font-semibold text-text-primary">{order.customer_name?.trim() || '-'}</span>
+                  </p>
                 </div>
                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium', status.color)}>
                   <status.Icon className="h-3 w-3" />
@@ -154,7 +157,7 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
       </div>
 
       <div className="hidden overflow-x-auto overscroll-x-contain md:block">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead className="sticky top-0 bg-surface-2">
             <tr className="text-left text-xs uppercase tracking-wider text-text-secondary">
               <th className="whitespace-nowrap px-3 py-3 sm:px-4">
@@ -167,6 +170,7 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                   Waktu <SortIcon active={sortKey === 'created_at'} asc={sortAsc} />
                 </button>
               </th>
+              <th className="px-3 py-3 font-semibold sm:px-4">Pelanggan</th>
               <th className="px-3 py-3 font-semibold sm:px-4">Items</th>
               <th className="px-3 py-3 font-semibold sm:px-4">Metode</th>
               <th className="whitespace-nowrap px-3 py-3 sm:px-4">
@@ -190,6 +194,9 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                   <tr className={cn('border-t border-border transition-colors', selectedOrder?.id === order.id && 'bg-primary/5')}>
                     <td className="whitespace-nowrap px-3 py-3 text-xs font-bold text-primary sm:px-4 sm:text-sm">{formatOrderNumber(order.order_number)}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-xs text-text-secondary sm:px-4 sm:text-sm">{formatDateTime(order.created_at)}</td>
+                    <td className="px-3 py-3 text-xs sm:px-4 sm:text-sm">
+                      <span className="line-clamp-1">{order.customer_name?.trim() || '-'}</span>
+                    </td>
                     <td className="px-3 py-3 text-xs sm:px-4 sm:text-sm">
                       <div className="line-clamp-2">{order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}</div>
                     </td>
@@ -232,7 +239,7 @@ export default function OrderTable({ orders, selectedOrder, onSelectOrder }: Ord
                   </tr>
                   {expandedId === order.id ? (
                     <tr className="border-t border-border bg-surface-2/50">
-                      <td className="px-3 py-3 sm:px-4" colSpan={7}>
+                      <td className="px-3 py-3 sm:px-4" colSpan={8}>
                         <div className="space-y-1.5 text-xs sm:text-sm">
                           {order.items.map((item, index) => (
                             <div key={`${order.id}-desktop-item-${index}`} className="flex items-start gap-2">

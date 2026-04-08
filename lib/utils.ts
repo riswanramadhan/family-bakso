@@ -183,9 +183,10 @@ export function orderMatchesSearch(order: Order, search?: string): boolean {
 
   const inNumber = `${order.order_number}`.includes(keyword);
   const inItems = order.items.some((item) => item.name.toLowerCase().includes(keyword));
+  const inCustomer = (order.customer_name ?? '').toLowerCase().includes(keyword);
   const inMethod = order.payment_method.toLowerCase().includes(keyword);
   const inStatus = order.status.toLowerCase().includes(keyword);
-  return inNumber || inItems || inMethod || inStatus;
+  return inNumber || inItems || inCustomer || inMethod || inStatus;
 }
 
 export function asPercentage(value: number, total: number): number {
@@ -275,6 +276,7 @@ export function generateReceiptHTML(order: Order): string {
           <strong>Order ${formatOrderNumber(order.order_number)}</strong>
         </div>
         <div style="font-size: 12px; color: #666;">${formatDateTime(order.created_at)}</div>
+        <div style="font-size: 12px; color: #666; margin-top: 2px;">Pelanggan: ${order.customer_name?.trim() || '-'}</div>
       </div>
 
       <div class="items">

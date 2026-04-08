@@ -101,7 +101,7 @@ export default function RekapPage() {
               type="text"
               value={filters.search}
               onChange={(event) => setFilters({ search: event.target.value })}
-              placeholder="Cari nomor order, menu, metode..."
+              placeholder="Cari nomor order, customer, menu, metode..."
               aria-label="Cari order"
               className="pl-10"
             />

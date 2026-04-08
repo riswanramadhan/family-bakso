@@ -1,16 +1,17 @@
 'use client';
 
-import { CheckCircle2, PlusCircle, Printer } from 'lucide-react';
+import { CheckCircle2, Pencil, PlusCircle, Printer } from 'lucide-react';
 import { Order } from '@/lib/types';
 import { formatDateTime, formatOrderNumber, formatRupiah } from '@/lib/utils';
 
 interface ReceiptModalProps {
   order: Order | null;
   open: boolean;
+  onEditPayment: () => void;
   onNewOrder: () => void;
 }
 
-export default function ReceiptModal({ order, open, onNewOrder }: ReceiptModalProps) {
+export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }: ReceiptModalProps) {
   if (!open || !order) return null;
 
   const handlePrint = () => {
@@ -56,6 +57,10 @@ export default function ReceiptModal({ order, open, onNewOrder }: ReceiptModalPr
                 <div className="flex justify-between">
                   <span>Tanggal</span>
                   <span>{formatDateTime(order.created_at)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Pelanggan</span>
+                  <span className="max-w-[65%] break-words text-right font-semibold">{order.customer_name?.trim() || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Kasir</span>
@@ -131,7 +136,17 @@ export default function ReceiptModal({ order, open, onNewOrder }: ReceiptModalPr
 
           {/* Footer - sticky */}
           <div className="safe-bottom border-t border-border p-4 sm:p-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex items-center justify-center gap-2 py-3"
+                onClick={onEditPayment}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Pembayaran
+              </button>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
               <button
                 type="button"
                 className="btn-secondary flex flex-1 items-center justify-center gap-2 py-4"
@@ -148,6 +163,7 @@ export default function ReceiptModal({ order, open, onNewOrder }: ReceiptModalPr
                 <PlusCircle className="h-5 w-5" />
                 Pesanan Baru
               </button>
+              </div>
             </div>
           </div>
         </div>

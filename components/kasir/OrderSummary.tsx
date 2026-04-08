@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingBag, CreditCard, StickyNote } from 'lucide-react';
+import { ShoppingBag, CreditCard, StickyNote, User } from 'lucide-react';
 import OrderItem from '@/components/kasir/OrderItem';
 import { CartItem } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
@@ -8,7 +8,9 @@ import { formatRupiah } from '@/lib/utils';
 interface OrderSummaryProps {
   items: CartItem[];
   subtotal: number;
+  customerName: string;
   orderNotes: string;
+  onCustomerNameChange: (name: string) => void;
   onOrderNotesChange: (notes: string) => void;
   onIncrease: (id: string, quantity: number) => void;
   onDecrease: (id: string, quantity: number) => void;
@@ -20,7 +22,9 @@ interface OrderSummaryProps {
 export default function OrderSummary({
   items,
   subtotal,
+  customerName,
   orderNotes,
+  onCustomerNameChange,
   onOrderNotesChange,
   onIncrease,
   onDecrease,
@@ -70,6 +74,19 @@ export default function OrderSummary({
 
       {/* Order notes and summary - sticky at bottom */}
       <div className="mt-4 space-y-4 border-t border-border pt-4">
+        {/* Customer name */}
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+          <input
+            type="text"
+            value={customerName}
+            onChange={(event) => onCustomerNameChange(event.target.value)}
+            placeholder="Nama customer (opsional)"
+            aria-label="Nama customer"
+            className="h-11 pl-10 text-sm"
+          />
+        </div>
+
         {/* Order notes */}
         <div className="relative">
           <StickyNote className="absolute left-3 top-3 h-4 w-4 text-text-tertiary" />

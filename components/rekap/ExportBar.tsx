@@ -41,6 +41,7 @@ export default function ExportBar({ orders, stats, itemPerformance, selectedOrde
       'No Order',
       'Tanggal',
       'Jam',
+      'Nama Customer',
       'Status',
       'Metode Bayar',
       'Daftar Menu',
@@ -56,6 +57,7 @@ export default function ExportBar({ orders, stats, itemPerformance, selectedOrde
         formatOrderNumber(order.order_number),
         formatCsvDate(order.created_at),
         formatCsvTime(order.created_at),
+        order.customer_name?.trim() || '-',
         toOrderStatusLabel(order.status),
         formatPaymentMethod(order.payment_method),
         orderMenus,
@@ -88,6 +90,7 @@ export default function ExportBar({ orders, stats, itemPerformance, selectedOrde
     const detailRows = orders.map((order) => ({
       order_number: formatOrderNumber(order.order_number),
       waktu: formatDateTime(order.created_at),
+      customer: order.customer_name?.trim() || '-',
       items: order.items.map((item) => `${item.quantity}x ${item.name}`).join('; '),
       metode_bayar: order.payment_method,
       total: order.total,
@@ -138,6 +141,7 @@ export default function ExportBar({ orders, stats, itemPerformance, selectedOrde
 
     pair('No. Order', formatOrderNumber(selectedOrder.order_number), true);
     pair('Tanggal', formatDateTime(selectedOrder.created_at));
+    pair('Pelanggan', selectedOrder.customer_name?.trim() || '-');
     pair('Kasir', 'Naeee');
 
     y += 2;

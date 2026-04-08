@@ -28,15 +28,52 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json();
-  const { id, status } = body as { id?: string; status?: string };
+  const { id, status, payment_method, cash_received, change_amount, customer_name } = body as {
+    id?: string;
+    status?: string;
+    payment_method?: 'tunai' | 'qris';
+    cash_received?: number | null;
+    change_amount?: number | null;
+    customer_name?: string | null;
+  };
 
-  if (!id || !status) {
-    return NextResponse.json({ error: 'id and status are required' }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
+  if (payment_method && payment_method !== 'tunai' && payment_method !== 'qris') {
+    return NextResponse.json({ error: 'payment_method must be tunai or qris' }, { status: 400 });
+  }
+
+  const updates: Record<string, unknown> = {};
+
+  if (status) {
+    updates.status = status;
+  }
+
+  if (payment_method) {
+    updates.payment_method = payment_method;
+  }
+
+  if ('cash_received' in body) {
+    updates.cash_received = cash_received ?? null;
+  }
+
+  if ('change_amount' in body) {
+    updates.change_amount = change_amount ?? null;
+  }
+
+  if ('customer_name' in body) {
+    updates.customer_name = customer_name ?? null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
   }
 
   const { data, error } = await supabaseServer
     .from('orders')
-    .update({ status })
+    .update(updates)
     .eq('id', id)
     .select('*')
     .single();

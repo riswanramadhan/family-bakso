@@ -9,7 +9,14 @@ import PaymentModal from '@/components/kasir/PaymentModal';
 import ReceiptModal from '@/components/kasir/ReceiptModal';
 import MotivationalPopup from '@/components/kasir/MotivationalPopup';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { createOfflineOrder, getTodayLocalOrderCount, isLikelyOnline, setPaymentInProgress, upsertLocalOrder } from '@/lib/offline-orders';
+import {
+  createOfflineOrder,
+  getTodayLocalOrderCount,
+  isLikelyOnline,
+  setLocalOrderPayment,
+  setPaymentInProgress,
+  upsertLocalOrder,
+} from '@/lib/offline-orders';
 import { Order, Toast as ToastType } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { useOrderStore } from '@/store/orderStore';
@@ -26,11 +33,13 @@ const MOTIVATION_MESSAGES = [
 export default function KasirPage() {
   const {
     cartItems,
+    customerName,
     orderNotes,
     addItem,
     removeItem,
     updateQuantity,
     updateItemNotes,
+    setCustomerName,
     setOrderNotes,
     clearCart,
     getSubtotal,
@@ -39,6 +48,7 @@ export default function KasirPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'main' | 'drinks'>('all');
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'create' | 'edit'>('create');
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
   const [todayOrderCount, setTodayOrderCount] = useState(0);
@@ -49,6 +59,7 @@ export default function KasirPage() {
   const [isOnline, setIsOnline] = useState(isLikelyOnline);
 
   const subtotal = getSubtotal();
+  const paymentTotal = paymentMode === 'edit' && currentOrder ? currentOrder.total : subtotal;
 
   const pushToast = (message: string, type: ToastType['type']) => {
     const id = generateId();
@@ -108,7 +119,27 @@ export default function KasirPage() {
     };
   }, []);
 
-  const handleConfirmPayment = async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
+  const openCreatePayment = () => {
+    setPaymentMode('create');
+    setPaymentOpen(true);
+  };
+
+  const openEditPayment = () => {
+    if (!currentOrder) return;
+    setPaymentMode('edit');
+    setReceiptOpen(false);
+    setPaymentOpen(true);
+  };
+
+  const handleClosePayment = () => {
+    setPaymentOpen(false);
+    if (paymentMode === 'edit' && currentOrder) {
+      setReceiptOpen(true);
+    }
+    setPaymentMode('create');
+  };
+
+  const handleCreatePayment = async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
     if (cartItems.length === 0) {
       pushToast('Pesanan masih kosong', 'error');
       return;
@@ -137,6 +168,7 @@ export default function KasirPage() {
       payment_method: paymentMethod,
       cash_received: paymentMethod === 'tunai' ? (cashReceived ?? 0) : undefined,
       change_amount: paymentMethod === 'tunai' ? Math.max(0, (cashReceived ?? 0) - subtotal) : undefined,
+      customer_name: customerName.trim() || undefined,
       notes: orderNotes || undefined,
       status: 'pending' as const,
     };
@@ -145,6 +177,7 @@ export default function KasirPage() {
       const offlineOrder = createOfflineOrder(payload);
       setCurrentOrder(offlineOrder);
       setPaymentOpen(false);
+      setPaymentMode('create');
       setReceiptOpen(true);
       setTodayOrderCount((prev) => prev + 1);
       pushToast('Tersimpan offline. Akan auto-sync saat koneksi stabil (jika Auto Sync aktif).', 'info');
@@ -173,6 +206,7 @@ export default function KasirPage() {
       upsertLocalOrder(data as Order);
       setCurrentOrder(data as Order);
       setPaymentOpen(false);
+      setPaymentMode('create');
       setReceiptOpen(true);
       setTodayOrderCount((prev) => prev + 1);
       pushToast('Pembayaran berhasil!', 'success');
@@ -181,6 +215,99 @@ export default function KasirPage() {
       console.error('Unexpected error, fallback to offline queue:', err);
       fallbackOffline();
     }
+  };
+
+  const handleEditPayment = async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
+    if (!currentOrder) {
+      pushToast('Order tidak ditemukan untuk diedit', 'error');
+      return;
+    }
+
+    if (paymentMethod === 'tunai' && (cashReceived ?? 0) < currentOrder.total) {
+      pushToast('Uang diterima kurang dari total order', 'error');
+      return;
+    }
+
+    setLoadingPayment(true);
+
+    const nextCash = paymentMethod === 'tunai' ? (cashReceived ?? 0) : null;
+    const nextChange = paymentMethod === 'tunai' ? Math.max(0, (cashReceived ?? 0) - currentOrder.total) : null;
+
+    const fallbackOffline = () => {
+      const localUpdated = setLocalOrderPayment(currentOrder.id, {
+        payment_method: paymentMethod,
+        cash_received: nextCash,
+        change_amount: nextChange,
+      });
+
+      if (localUpdated) {
+        setCurrentOrder(localUpdated);
+      } else {
+        const forcedUpdated: Order = {
+          ...currentOrder,
+          payment_method: paymentMethod,
+          cash_received: nextCash,
+          change_amount: nextChange,
+          updated_at: new Date().toISOString(),
+        };
+        upsertLocalOrder(forcedUpdated);
+        const queuedUpdate = setLocalOrderPayment(forcedUpdated.id, {
+          payment_method: paymentMethod,
+          cash_received: nextCash,
+          change_amount: nextChange,
+        });
+        setCurrentOrder(queuedUpdate ?? forcedUpdated);
+      }
+
+      setPaymentOpen(false);
+      setPaymentMode('create');
+      setReceiptOpen(true);
+      pushToast('Perubahan pembayaran disimpan lokal. Akan auto-sync saat koneksi stabil (jika Auto Sync aktif).', 'info');
+      setLoadingPayment(false);
+    };
+
+    if (!isSupabaseConfigured || !isOnline) {
+      fallbackOffline();
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          payment_method: paymentMethod,
+          cash_received: nextCash,
+          change_amount: nextChange,
+        })
+        .eq('id', currentOrder.id)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        fallbackOffline();
+        return;
+      }
+
+      const updated = data as Order;
+      upsertLocalOrder(updated);
+      setCurrentOrder(updated);
+      setPaymentOpen(false);
+      setPaymentMode('create');
+      setReceiptOpen(true);
+      pushToast('Pembayaran berhasil diperbarui', 'success');
+      setLoadingPayment(false);
+    } catch {
+      fallbackOffline();
+    }
+  };
+
+  const handleConfirmPayment = async (paymentMethod: 'tunai' | 'qris', cashReceived?: number) => {
+    if (paymentMode === 'edit') {
+      await handleEditPayment(paymentMethod, cashReceived);
+      return;
+    }
+
+    await handleCreatePayment(paymentMethod, cashReceived);
   };
 
   const handleNewOrder = () => {
@@ -224,28 +351,35 @@ export default function KasirPage() {
           <OrderSummary
             items={cartItems}
             subtotal={subtotal}
+            customerName={customerName}
             orderNotes={orderNotes}
+            onCustomerNameChange={setCustomerName}
             onOrderNotesChange={setOrderNotes}
             onIncrease={updateQuantity}
             onDecrease={updateQuantity}
             onDelete={removeItem}
             onItemNotesChange={updateItemNotes}
-            onOpenPayment={() => setPaymentOpen(true)}
+            onOpenPayment={openCreatePayment}
           />
         </div>
       </div>
 
       <PaymentModal
         open={paymentOpen}
-        total={subtotal}
+        total={paymentTotal}
         loading={loadingPayment}
-        onClose={() => setPaymentOpen(false)}
+        title={paymentMode === 'edit' ? 'Edit Pembayaran' : 'Pembayaran'}
+        confirmLabel={paymentMode === 'edit' ? 'Simpan Perubahan Pembayaran' : undefined}
+        initialMethod={paymentMode === 'edit' ? currentOrder?.payment_method : undefined}
+        initialCashReceived={paymentMode === 'edit' ? currentOrder?.cash_received : undefined}
+        onClose={handleClosePayment}
         onConfirm={handleConfirmPayment}
       />
 
       <ReceiptModal
         order={currentOrder}
         open={receiptOpen}
+        onEditPayment={openEditPayment}
         onNewOrder={handleNewOrder}
       />
 
