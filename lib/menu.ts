@@ -24,7 +24,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'mie-ayam-bakar',
     name: 'Mie Ayam Bakar',
-    basePrice: 35000,
+    basePrice: 30000,
     image: '/images/menu/mie-ayam-bakar.webp', // Ganti dengan gambar yang diupload
     category: 'main',
     addOns: [{ id: 'tambah-bakso', label: 'Tambah Bakso', price: 5000 }],

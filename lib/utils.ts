@@ -216,7 +216,8 @@ export type ReceiptPaperWidthMm = 58 | 72 | 80;
 export function generateReceiptHTML(
   order: Order,
   paperWidthMm: ReceiptPaperWidthMm = 58,
-  cashierName = 'Naeee'
+  cashierName = 'Naeee',
+  autoPrint = true
 ): string {
   const paperPaddingMm = paperWidthMm === 58 ? 2 : paperWidthMm === 72 ? 2.5 : 3;
   const baseFontPx = paperWidthMm === 58 ? 12 : paperWidthMm === 72 ? 12.5 : 13;
@@ -262,6 +263,96 @@ export function generateReceiptHTML(
       : '';
 
   const noteRowHtml = orderNotes ? `<div class="item-note">Catatan: ${escapeHtml(orderNotes)}</div>` : '';
+
+  const printScriptHtml = autoPrint
+    ? `
+      <script>
+        (function () {
+          var hasPrinted = false;
+
+          function waitForReceiptAssets(onReady) {
+            var isDone = false;
+            function finish() {
+              if (isDone) return;
+              isDone = true;
+              onReady();
+            }
+
+            var images = Array.prototype.slice.call(document.images || []);
+            var pending = images.filter(function (img) {
+              return !img.complete;
+            });
+
+            if (pending.length === 0) {
+              finish();
+              return;
+            }
+
+            var loaded = 0;
+            function onAssetDone() {
+              loaded += 1;
+              if (loaded >= pending.length) {
+                finish();
+              }
+            }
+
+            pending.forEach(function (img) {
+              img.addEventListener('load', onAssetDone, { once: true });
+              img.addEventListener('error', onAssetDone, { once: true });
+            });
+
+            setTimeout(finish, 900);
+          }
+
+          function applyTightPageHeight() {
+            var receipt = document.querySelector('.receipt');
+            if (!receipt) return;
+
+            var heightPx = Math.ceil(receipt.getBoundingClientRect().height);
+            if (!heightPx) return;
+
+            var pageHeightMm = Math.max(40, (heightPx * 25.4) / 96 + 0.8);
+            var dynamicPageStyle = document.createElement('style');
+            dynamicPageStyle.setAttribute('data-dynamic-page-size', 'true');
+            dynamicPageStyle.textContent = '@page { size: ${paperWidthMm}mm ' + pageHeightMm.toFixed(2) + 'mm; margin: 0; }';
+            document.head.appendChild(dynamicPageStyle);
+          }
+
+          function triggerPrint() {
+            if (hasPrinted) return;
+            hasPrinted = true;
+            window.focus();
+            window.print();
+          }
+
+          function prepareAndPrint() {
+            waitForReceiptAssets(function () {
+              applyTightPageHeight();
+              triggerPrint();
+            });
+          }
+
+          if (document.readyState === 'complete') {
+            setTimeout(prepareAndPrint, 120);
+          } else {
+            window.addEventListener(
+              'load',
+              function () {
+                setTimeout(prepareAndPrint, 120);
+              },
+              { once: true }
+            );
+          }
+
+          window.addEventListener('afterprint', function () {
+            setTimeout(function () {
+              window.close();
+            }, 80);
+          });
+        })();
+      </script>
+    `
+    : '';
 
   return `
     <!DOCTYPE html>
@@ -474,92 +565,7 @@ export function generateReceiptHTML(
           <div class="footer-small">Powered by DekatLokal</div>
         </footer>
       </main>
-
-      <script>
-        (function () {
-          var hasPrinted = false;
-
-          function waitForReceiptAssets(onReady) {
-            var isDone = false;
-            function finish() {
-              if (isDone) return;
-              isDone = true;
-              onReady();
-            }
-
-            var images = Array.prototype.slice.call(document.images || []);
-            var pending = images.filter(function (img) {
-              return !img.complete;
-            });
-
-            if (pending.length === 0) {
-              finish();
-              return;
-            }
-
-            var loaded = 0;
-            function onAssetDone() {
-              loaded += 1;
-              if (loaded >= pending.length) {
-                finish();
-              }
-            }
-
-            pending.forEach(function (img) {
-              img.addEventListener('load', onAssetDone, { once: true });
-              img.addEventListener('error', onAssetDone, { once: true });
-            });
-
-            setTimeout(finish, 900);
-          }
-
-          function applyTightPageHeight() {
-            var receipt = document.querySelector('.receipt');
-            if (!receipt) return;
-
-            var heightPx = Math.ceil(receipt.getBoundingClientRect().height);
-            if (!heightPx) return;
-
-            var pageHeightMm = Math.max(40, (heightPx * 25.4) / 96 + 0.8);
-            var dynamicPageStyle = document.createElement('style');
-            dynamicPageStyle.setAttribute('data-dynamic-page-size', 'true');
-            dynamicPageStyle.textContent = '@page { size: ${paperWidthMm}mm ' + pageHeightMm.toFixed(2) + 'mm; margin: 0; }';
-            document.head.appendChild(dynamicPageStyle);
-          }
-
-          function triggerPrint() {
-            if (hasPrinted) return;
-            hasPrinted = true;
-            window.focus();
-            window.print();
-          }
-
-          function prepareAndPrint() {
-            waitForReceiptAssets(function () {
-              applyTightPageHeight();
-              triggerPrint();
-            });
-          }
-
-          if (document.readyState === 'complete') {
-            setTimeout(prepareAndPrint, 120);
-          } else {
-            window.addEventListener(
-              'load',
-              function () {
-                setTimeout(prepareAndPrint, 120);
-              },
-              { once: true }
-            );
-          }
-
-          window.addEventListener('afterprint', function () {
-            setTimeout(function () {
-              window.close();
-            }, 80);
-          });
-        })();
-      </script>
+      ${printScriptHtml}
     </body>
     </html>
   `;
