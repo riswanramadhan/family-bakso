@@ -146,6 +146,7 @@ function makeQueueId(): string {
 
 export function isLikelyOnline(): boolean {
   if (typeof navigator === 'undefined') return true;
+  if (typeof navigator.onLine !== 'boolean') return true;
   return navigator.onLine;
 }
 

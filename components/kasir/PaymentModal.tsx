@@ -31,6 +31,30 @@ const parseNumber = (value: string): string => {
   return value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 };
 
+const getInitialMethod = (initialMethod?: PaymentMethod): PaymentMethod => initialMethod ?? 'tunai';
+
+const getInitialCashInput = (
+  initialMethod?: PaymentMethod,
+  initialCashReceived?: number | null
+): { cashInput: string; displayValue: string } => {
+  const method = getInitialMethod(initialMethod);
+  if (method !== 'tunai') {
+    return { cashInput: '', displayValue: '' };
+  }
+
+  const normalizedCash =
+    typeof initialCashReceived === 'number' && Number.isFinite(initialCashReceived)
+      ? Math.max(0, initialCashReceived)
+      : 0;
+
+  if (normalizedCash <= 0) {
+    return { cashInput: '', displayValue: '' };
+  }
+
+  const raw = `${normalizedCash}`;
+  return { cashInput: raw, displayValue: formatNumber(raw) };
+};
+
 export default function PaymentModal({
   open,
   total,
@@ -42,37 +66,13 @@ export default function PaymentModal({
   onClose,
   onConfirm,
 }: PaymentModalProps) {
-  const [method, setMethod] = useState<PaymentMethod>('tunai');
-  const [cashInput, setCashInput] = useState<string>('');
-  const [displayValue, setDisplayValue] = useState<string>('');
+  const initialMethodValue = getInitialMethod(initialMethod);
+  const initialCashState = getInitialCashInput(initialMethod, initialCashReceived);
+
+  const [method, setMethod] = useState<PaymentMethod>(initialMethodValue);
+  const [cashInput, setCashInput] = useState<string>(initialCashState.cashInput);
+  const [displayValue, setDisplayValue] = useState<string>(initialCashState.displayValue);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const nextMethod = initialMethod ?? 'tunai';
-    setMethod(nextMethod);
-
-    if (nextMethod === 'tunai') {
-      const normalizedCash =
-        typeof initialCashReceived === 'number' && Number.isFinite(initialCashReceived)
-          ? Math.max(0, initialCashReceived)
-          : 0;
-
-      if (normalizedCash > 0) {
-        const raw = `${normalizedCash}`;
-        setCashInput(raw);
-        setDisplayValue(formatNumber(raw));
-      } else {
-        setCashInput('');
-        setDisplayValue('');
-      }
-      return;
-    }
-
-    setCashInput('');
-    setDisplayValue('');
-  }, [initialCashReceived, initialMethod, open]);
 
   useEffect(() => {
     if (open && method === 'tunai') {

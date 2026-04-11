@@ -194,115 +194,372 @@ export function asPercentage(value: number, total: number): number {
   return Math.round((value / total) * 100);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toReceiptText(value: string | null | undefined, fallback = '-'): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
+}
+
+export type ReceiptPaperWidthMm = 58 | 72 | 80;
+
 /**
  * Generate receipt HTML for printing
  */
-export function generateReceiptHTML(order: Order): string {
+export function generateReceiptHTML(
+  order: Order,
+  paperWidthMm: ReceiptPaperWidthMm = 58,
+  cashierName = 'Naeee'
+): string {
+  const paperPaddingMm = paperWidthMm === 58 ? 2 : paperWidthMm === 72 ? 2.5 : 3;
+  const baseFontPx = paperWidthMm === 58 ? 12 : paperWidthMm === 72 ? 12.5 : 13;
+  const logoWidthMm = paperWidthMm === 58 ? 18 : paperWidthMm === 72 ? 22 : 26;
+  const orderNumber = escapeHtml(formatOrderNumber(order.order_number));
+  const createdAt = escapeHtml(formatDateTime(order.created_at));
+  const customerName = escapeHtml(toReceiptText(order.customer_name));
+  const cashier = escapeHtml(toReceiptText(cashierName));
+  const paymentMethod = order.payment_method === 'tunai' ? 'Tunai' : 'QRIS';
+  const orderNotes = toReceiptText(order.notes, '');
+
   const itemsHtml = order.items
-    .map(
-      (item: OrderItem) => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>${item.quantity}x ${item.name}</span>
-        <span>${formatRupiah(item.subtotal)}</span>
+    .map((item: OrderItem) => {
+      const itemNotes = item.notes?.trim();
+      const addOnText =
+        item.add_ons.length > 0 ? escapeHtml(item.add_ons.map((a) => a.label).join(', ')) : '';
+
+      return `
+      <div class="item">
+        <div class="row item-name-row">
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-total">${escapeHtml(formatRupiah(item.subtotal))}</span>
+        </div>
+        <div class="row item-detail-row">
+          <span>${item.quantity} x ${escapeHtml(formatRupiah(item.unit_price))}</span>
+          <span></span>
+        </div>
+        ${addOnText ? `<div class="item-addon">+ ${addOnText}</div>` : ''}
+        ${itemNotes ? `<div class="item-note">Catatan: ${escapeHtml(itemNotes)}</div>` : ''}
       </div>
-      ${
-        item.add_ons.length > 0
-          ? `<div style="font-size: 12px; color: #666; margin-left: 16px;">${item.add_ons.map((a) => `+ ${a.label}`).join(', ')}</div>`
-          : ''
-      }
-      ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 16px; font-style: italic;">Catatan: ${item.notes}</div>` : ''}
-    `
-    )
+    `;
+    })
     .join('');
+
+  const cashRowHtml =
+    typeof order.cash_received === 'number'
+      ? `<div class="row"><span>Tunai</span><span class="right">${escapeHtml(formatRupiah(order.cash_received))}</span></div>`
+      : '';
+
+  const changeRowHtml =
+    typeof order.change_amount === 'number' && order.change_amount > 0
+      ? `<div class="row"><span>Kembalian</span><span class="right">${escapeHtml(formatRupiah(order.change_amount))}</span></div>`
+      : '';
+
+  const noteRowHtml = orderNotes ? `<div class="item-note">Catatan: ${escapeHtml(orderNotes)}</div>` : '';
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Struk ${formatOrderNumber(order.order_number)}</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Struk ${orderNumber}</title>
       <style>
-        body {
-          font-family: -apple-system, 'SF Pro Display', Inter, sans-serif;
-          max-width: 300px;
-          margin: 0 auto;
-          padding: 20px;
-          font-size: 14px;
+        :root {
+          --paper-width: ${paperWidthMm}mm;
+          --paper-padding: ${paperPaddingMm}mm;
         }
+
+        @page {
+          size: var(--paper-width) auto;
+          margin: 0;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        html,
+        body {
+          width: var(--paper-width);
+          margin: 0;
+          padding: 0;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: ${baseFontPx}px;
+          line-height: 1.35;
+          color: #111;
+          background: #fff;
+          text-rendering: geometricPrecision;
+          -webkit-font-smoothing: antialiased;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+          overflow: hidden;
+        }
+
+        .receipt {
+          width: calc(var(--paper-width) - (var(--paper-padding) * 2));
+          margin: 0 auto;
+          padding: 1.4mm var(--paper-padding) 1.2mm;
+        }
+
+        .section {
+          border-bottom: 1px dashed #555;
+          padding: 1.5mm 0;
+        }
+
         .header {
           text-align: center;
-          margin-bottom: 16px;
-          padding-bottom: 16px;
-          border-bottom: 1px dashed #ccc;
+          padding-bottom: 2mm;
         }
+
+        .brand-logo {
+          width: ${logoWidthMm}mm;
+          height: auto;
+          display: block;
+          margin: 0 auto 1.2mm;
+        }
+
         .logo {
-          font-size: 24px;
-          font-weight: bold;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
         }
-        .items {
-          margin-bottom: 16px;
-          padding-bottom: 16px;
-          border-bottom: 1px dashed #ccc;
+
+        .separator {
+          margin-top: 1mm;
+          color: #666;
+          letter-spacing: 1px;
         }
-        .total {
-          font-weight: bold;
-          font-size: 18px;
+
+        .row {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 8px;
+          gap: 6px;
+          align-items: flex-start;
         }
-        .payment-info {
-          margin-top: 8px;
+
+        .row + .row {
+          margin-top: 1mm;
+        }
+
+        .right {
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        .item {
+          margin-top: 2mm;
+          page-break-inside: avoid;
+        }
+
+        .item:first-child {
+          margin-top: 0;
+        }
+
+        .item-name {
+          font-weight: 700;
+        }
+
+        .item-total {
+          font-weight: 700;
+        }
+
+        .item-detail-row {
+          color: #444;
+        }
+
+        .item-addon,
+        .item-note {
+          margin-top: 0.5mm;
+          margin-left: 2mm;
+          color: #444;
+        }
+
+        .total-row {
+          margin-top: 1.5mm;
           font-size: 13px;
+          font-weight: 700;
         }
+
         .footer {
           text-align: center;
-          margin-top: 20px;
-          font-size: 12px;
+          padding-top: 1.2mm;
+          padding-bottom: 0.6mm;
           color: #666;
         }
-        .copyright {
-          margin-top: 16px;
-          font-size: 10px;
-          color: #999;
+
+        .footer-title {
+          color: #111;
+          font-weight: 700;
+        }
+
+        .footer-small {
+          margin-top: 1mm;
+          font-size: ${paperWidthMm === 58 ? 9.5 : 10}px;
+        }
+
+        @media screen {
+          body {
+            background: #ececec;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 12px 0;
+          }
+
+          .receipt {
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+          }
+        }
+
+        @media print {
+          body {
+            background: #fff;
+          }
+
+          .receipt {
+            width: 100%;
+            box-shadow: none;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="logo">🍜 FAMILY BAKSO</div>
-        <div style="margin-top: 4px; font-size: 12px; color: #666;">Jl. Makanan Enak No. 123</div>
-        <div style="margin-top: 8px;">
-          <strong>Order ${formatOrderNumber(order.order_number)}</strong>
-        </div>
-        <div style="font-size: 12px; color: #666;">${formatDateTime(order.created_at)}</div>
-        <div style="font-size: 12px; color: #666; margin-top: 2px;">Pelanggan: ${order.customer_name?.trim() || '-'}</div>
-      </div>
+      <main class="receipt">
+        <section class="section header">
+          <img class="brand-logo" src="/images/logo-family-bakso.png" alt="Logo Family Bakso">
+          <div class="logo">FAMILY BAKSO</div>
+          <div class="separator">==============================</div>
+          <div style="margin-top: 1mm;"><strong>Order ${orderNumber}</strong></div>
+          <div>${createdAt}</div>
+          <div>Pelanggan: ${customerName}</div>
+          <div>Kasir: ${cashier}</div>
+        </section>
 
-      <div class="items">
-        ${itemsHtml}
-      </div>
+        <section class="section">
+          ${itemsHtml}
+        </section>
 
-      <div class="total">
-        <span>Total</span>
-        <span>${formatRupiah(order.total)}</span>
-      </div>
+        <section class="section">
+          <div class="row">
+            <span>Subtotal</span>
+            <span class="right">${escapeHtml(formatRupiah(order.subtotal))}</span>
+          </div>
+          <div class="row total-row">
+            <span>TOTAL</span>
+            <span class="right">${escapeHtml(formatRupiah(order.total))}</span>
+          </div>
+        </section>
 
-      <div class="payment-info">
-        <div>Metode: ${order.payment_method === 'tunai' ? 'Tunai' : 'QRIS'}</div>
-        ${order.cash_received ? `<div>Tunai: ${formatRupiah(order.cash_received)}</div>` : ''}
-        ${order.change_amount ? `<div>Kembalian: ${formatRupiah(order.change_amount)}</div>` : ''}
-      </div>
+        <section class="section">
+          <div class="row">
+            <span>Metode</span>
+            <span class="right">${paymentMethod}</span>
+          </div>
+          ${cashRowHtml}
+          ${changeRowHtml}
+          ${noteRowHtml}
+        </section>
 
-      ${order.notes ? `<div style="margin-top: 12px; font-size: 12px; font-style: italic;">Catatan: ${order.notes}</div>` : ''}
+        <footer class="footer">
+          <div class="footer-title">Terima kasih</div>
+          <div>Selamat menikmati</div>
+          <div class="footer-small">Powered by DekatLokal</div>
+        </footer>
+      </main>
 
-      <div class="footer">
-        Terima kasih! Selamat menikmati 🍜
-      </div>
+      <script>
+        (function () {
+          var hasPrinted = false;
 
-      <div class="copyright">
-        © 2026 POS Family Bakso. All Rights Reserved | Powered by DekatLokal
-      </div>
+          function waitForReceiptAssets(onReady) {
+            var isDone = false;
+            function finish() {
+              if (isDone) return;
+              isDone = true;
+              onReady();
+            }
+
+            var images = Array.prototype.slice.call(document.images || []);
+            var pending = images.filter(function (img) {
+              return !img.complete;
+            });
+
+            if (pending.length === 0) {
+              finish();
+              return;
+            }
+
+            var loaded = 0;
+            function onAssetDone() {
+              loaded += 1;
+              if (loaded >= pending.length) {
+                finish();
+              }
+            }
+
+            pending.forEach(function (img) {
+              img.addEventListener('load', onAssetDone, { once: true });
+              img.addEventListener('error', onAssetDone, { once: true });
+            });
+
+            setTimeout(finish, 900);
+          }
+
+          function applyTightPageHeight() {
+            var receipt = document.querySelector('.receipt');
+            if (!receipt) return;
+
+            var heightPx = Math.ceil(receipt.getBoundingClientRect().height);
+            if (!heightPx) return;
+
+            var pageHeightMm = Math.max(40, (heightPx * 25.4) / 96 + 0.8);
+            var dynamicPageStyle = document.createElement('style');
+            dynamicPageStyle.setAttribute('data-dynamic-page-size', 'true');
+            dynamicPageStyle.textContent = '@page { size: ${paperWidthMm}mm ' + pageHeightMm.toFixed(2) + 'mm; margin: 0; }';
+            document.head.appendChild(dynamicPageStyle);
+          }
+
+          function triggerPrint() {
+            if (hasPrinted) return;
+            hasPrinted = true;
+            window.focus();
+            window.print();
+          }
+
+          function prepareAndPrint() {
+            waitForReceiptAssets(function () {
+              applyTightPageHeight();
+              triggerPrint();
+            });
+          }
+
+          if (document.readyState === 'complete') {
+            setTimeout(prepareAndPrint, 120);
+          } else {
+            window.addEventListener(
+              'load',
+              function () {
+                setTimeout(prepareAndPrint, 120);
+              },
+              { once: true }
+            );
+          }
+
+          window.addEventListener('afterprint', function () {
+            setTimeout(function () {
+              window.close();
+            }, 80);
+          });
+        })();
+      </script>
     </body>
     </html>
   `;

@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
 import { CheckCircle2, Pencil, PlusCircle, Printer } from 'lucide-react';
 import { Order } from '@/lib/types';
-import { formatDateTime, formatOrderNumber, formatRupiah } from '@/lib/utils';
+import { formatDateTime, formatOrderNumber, formatRupiah, generateReceiptHTML, ReceiptPaperWidthMm } from '@/lib/utils';
 
 interface ReceiptModalProps {
   order: Order | null;
@@ -11,11 +13,48 @@ interface ReceiptModalProps {
   onNewOrder: () => void;
 }
 
+const PAPER_SIZE_STORAGE_KEY = 'family-bakso-pos.receipt-paper-width-mm';
+const CASHIER_NAME = 'Naeee';
+
+const PAPER_SIZE_OPTIONS: Array<{ value: ReceiptPaperWidthMm; label: string; note: string }> = [
+  { value: 58, label: '58mm', note: 'Umum mini thermal' },
+  { value: 72, label: '72mm', note: 'Medium thermal' },
+  { value: 80, label: '80mm', note: 'Kasir lebar' },
+];
+
+function parseSavedPaperWidth(rawValue: string | null): ReceiptPaperWidthMm | null {
+  if (!rawValue) return null;
+  const parsed = Number(rawValue);
+  return parsed === 58 || parsed === 72 || parsed === 80 ? parsed : null;
+}
+
 export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }: ReceiptModalProps) {
+  const [paperWidthMm, setPaperWidthMm] = useState<ReceiptPaperWidthMm>(() => {
+    if (typeof window === 'undefined') return 58;
+    const savedWidth = parseSavedPaperWidth(window.localStorage.getItem(PAPER_SIZE_STORAGE_KEY));
+    return savedWidth ?? 58;
+  });
+
   if (!open || !order) return null;
 
+  const handleChangePaperWidth = (nextWidth: ReceiptPaperWidthMm) => {
+    setPaperWidthMm(nextWidth);
+    window.localStorage.setItem(PAPER_SIZE_STORAGE_KEY, `${nextWidth}`);
+  };
+
   const handlePrint = () => {
-    window.print();
+    const popupWidth = paperWidthMm === 58 ? 420 : paperWidthMm === 72 ? 520 : 620;
+    const printWindow = window.open('', 'PRINT_RECEIPT', `width=${popupWidth},height=900`);
+
+    if (!printWindow) {
+      window.alert('Popup cetak diblokir browser. Izinkan popup lalu coba lagi.');
+      return;
+    }
+
+    const receiptHtml = generateReceiptHTML(order, paperWidthMm, CASHIER_NAME);
+    printWindow.document.open();
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
   };
 
   return (
@@ -44,6 +83,13 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
             <div className="receipt-print mx-auto max-w-sm bg-white font-mono text-sm">
               {/* Receipt header */}
               <div className="border-b-2 border-dashed border-gray-300 pb-3 text-center">
+                <Image
+                  src="/images/logo-family-bakso.png"
+                  alt="Logo Family Bakso"
+                  width={160}
+                  height={68}
+                  className="mx-auto mb-2 h-auto w-[110px] object-contain"
+                />
                 <p className="text-lg font-bold">FAMILY BAKSO</p>
                 <p className="mt-1 text-xs text-gray-500">================================</p>
               </div>
@@ -64,7 +110,7 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
                 </div>
                 <div className="flex justify-between">
                   <span>Kasir</span>
-                  <span>Naeee</span>
+                  <span>{CASHIER_NAME}</span>
                 </div>
               </div>
 
@@ -137,6 +183,32 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
           {/* Footer - sticky */}
           <div className="safe-bottom border-t border-border p-4 sm:p-5">
             <div className="flex flex-col gap-2 sm:gap-3">
+              <div className="rounded-[var(--radius-md)] bg-surface-2 p-3">
+                <p className="text-xs font-semibold text-text-secondary">Ukuran kertas thermal</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {PAPER_SIZE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`min-h-[44px] rounded-[var(--radius-sm)] border px-2 py-2 text-center transition ${
+                        paperWidthMm === option.value
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-border bg-white text-text-primary'
+                      }`}
+                      onClick={() => handleChangePaperWidth(option.value)}
+                    >
+                      <span className="block text-sm font-bold">{option.label}</span>
+                      <span className={`block text-[10px] ${paperWidthMm === option.value ? 'text-white/90' : 'text-text-secondary'}`}>
+                        {option.note}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-text-secondary">
+                  Pilih sesuai ukuran roll printer agar hasil cetak pas, penuh, dan tulisan jelas.
+                </p>
+              </div>
+
               <button
                 type="button"
                 className="btn-secondary flex items-center justify-center gap-2 py-3"
@@ -168,26 +240,6 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
           </div>
         </div>
       </div>
-
-      {/* Print-only styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .receipt-print,
-          .receipt-print * {
-            visibility: visible;
-          }
-          .receipt-print {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 80mm;
-            padding: 10px;
-          }
-        }
-      `}</style>
     </>
   );
 }

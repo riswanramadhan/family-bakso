@@ -56,7 +56,7 @@ export default function KasirPage() {
   const [toasts, setToasts] = useState<ToastType[]>([]);
   const [showMotivation, setShowMotivation] = useState(false);
   const [motivationMessage, setMotivationMessage] = useState(MOTIVATION_MESSAGES[0]);
-  const [isOnline, setIsOnline] = useState(isLikelyOnline);
+  const [isOnline, setIsOnline] = useState(true);
 
   const subtotal = getSubtotal();
   const paymentTotal = paymentMode === 'edit' && currentOrder ? currentOrder.total : subtotal;
@@ -109,6 +109,7 @@ export default function KasirPage() {
     window.addEventListener('offline', onConnectivityChange);
 
     const timer = window.setTimeout(() => {
+      setIsOnline(isLikelyOnline());
       void fetchTodayCount();
     }, 0);
 
@@ -364,17 +365,20 @@ export default function KasirPage() {
         </div>
       </div>
 
-      <PaymentModal
-        open={paymentOpen}
-        total={paymentTotal}
-        loading={loadingPayment}
-        title={paymentMode === 'edit' ? 'Edit Pembayaran' : 'Pembayaran'}
-        confirmLabel={paymentMode === 'edit' ? 'Simpan Perubahan Pembayaran' : undefined}
-        initialMethod={paymentMode === 'edit' ? currentOrder?.payment_method : undefined}
-        initialCashReceived={paymentMode === 'edit' ? currentOrder?.cash_received : undefined}
-        onClose={handleClosePayment}
-        onConfirm={handleConfirmPayment}
-      />
+      {paymentOpen && (
+        <PaymentModal
+          key={`${paymentMode}-${currentOrder?.id ?? 'create'}-${currentOrder?.updated_at ?? 'na'}`}
+          open={paymentOpen}
+          total={paymentTotal}
+          loading={loadingPayment}
+          title={paymentMode === 'edit' ? 'Edit Pembayaran' : 'Pembayaran'}
+          confirmLabel={paymentMode === 'edit' ? 'Simpan Perubahan Pembayaran' : undefined}
+          initialMethod={paymentMode === 'edit' ? currentOrder?.payment_method : undefined}
+          initialCashReceived={paymentMode === 'edit' ? currentOrder?.cash_received : undefined}
+          onClose={handleClosePayment}
+          onConfirm={handleConfirmPayment}
+        />
+      )}
 
       <ReceiptModal
         order={currentOrder}
