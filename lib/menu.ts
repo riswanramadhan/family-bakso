@@ -46,6 +46,14 @@ export const MENU_ITEMS: MenuItem[] = [
     addOns: [],
   },
   {
+    id: 'makanan-bundling',
+    name: 'Makanan Bundling',
+    basePrice: 20000,
+    image: '/images/menu/makanan-bundling.svg', // Gambar dummy icon bundling makanan
+    category: 'main',
+    addOns: [],
+  },
+  {
     id: 'es-teh',
     name: 'Es Teh',
     basePrice: 10000,
@@ -57,7 +65,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'minum-bundling',
     name: 'Minum Bundling',
     basePrice: 5000,
-    image: '/images/menu/minum-bundling.webp', // Gambar hasil konversi dari JPG agar lebih ringan
+    image: '/images/menu/minum-bundling.svg', // Gambar dummy icon bundling minuman
     category: 'drinks',
     addOns: [],
   },
