@@ -53,6 +53,14 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     addOns: [],
   },
+  {
+    id: 'minum-bundling',
+    name: 'Minum Bundling',
+    basePrice: 5000,
+    image: '/images/menu/minum-bundling.webp', // Gambar hasil konversi dari JPG agar lebih ringan
+    category: 'drinks',
+    addOns: [],
+  },
 ];
 
 export const MENU_CATEGORIES = [
