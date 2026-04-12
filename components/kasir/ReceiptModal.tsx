@@ -43,9 +43,23 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
   };
 
   const handlePrint = () => {
-    const receiptHtml = generateReceiptHTML(order, paperWidthMm, CASHIER_NAME, false);
+    const receiptHtml = generateReceiptHTML(order, paperWidthMm, CASHIER_NAME, true);
+
+    try {
+      const printWindow = window.open('', '_blank', 'width=420,height=760');
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(receiptHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        return;
+      }
+    } catch {
+      // Fallback ke iframe jika popup diblokir browser.
+    }
+
     const printFrame = document.createElement('iframe');
-    printFrame.setAttribute('title', 'Print Receipt');
+    printFrame.setAttribute('title', 'Print Receipt Fallback');
     printFrame.style.position = 'fixed';
     printFrame.style.right = '0';
     printFrame.style.bottom = '0';
@@ -76,66 +90,15 @@ export default function ReceiptModal({ order, open, onEditPayment, onNewOrder }:
     frameDocument.write(receiptHtml);
     frameDocument.close();
 
-    const waitForAssets = () =>
-      new Promise<void>((resolve) => {
-        const images = Array.from(frameDocument.images ?? []);
-        const pending = images.filter((img) => !img.complete);
-
-        if (pending.length === 0) {
-          resolve();
-          return;
-        }
-
-        let loaded = 0;
-        const onDone = () => {
-          loaded += 1;
-          if (loaded >= pending.length) {
-            resolve();
-          }
-        };
-
-        pending.forEach((img) => {
-          img.addEventListener('load', onDone, { once: true });
-          img.addEventListener('error', onDone, { once: true });
-        });
-
-        window.setTimeout(resolve, 900);
-      });
-
-    const applyTightPageHeight = () => {
-      const receiptElement = frameDocument.querySelector<HTMLElement>('.receipt');
-      if (!receiptElement) return;
-
-      const heightPx = Math.ceil(receiptElement.getBoundingClientRect().height);
-      if (!heightPx) return;
-
-      const pageHeightMm = Math.max(40, (heightPx * 25.4) / 96 + 0.8);
-      const dynamicPageStyle = frameDocument.createElement('style');
-      dynamicPageStyle.textContent = `@page { size: ${paperWidthMm}mm ${pageHeightMm.toFixed(2)}mm; margin: 0; }`;
-      frameDocument.head?.appendChild(dynamicPageStyle);
-    };
-
-    void waitForAssets()
-      .then(() => {
-        applyTightPageHeight();
-
-        const fallbackCleanupTimer = window.setTimeout(cleanupFrame, 60000);
-        frameWindow.addEventListener(
-          'afterprint',
-          () => {
-            window.clearTimeout(fallbackCleanupTimer);
-            window.setTimeout(cleanupFrame, 150);
-          },
-          { once: true }
-        );
-
-        frameWindow.focus();
-        frameWindow.print();
-      })
-      .catch(() => {
-        cleanupFrame();
-        window.alert('Gagal menyiapkan dokumen cetak. Coba lagi.');
-      });
+    const fallbackCleanupTimer = window.setTimeout(cleanupFrame, 60000);
+    frameWindow.addEventListener(
+      'afterprint',
+      () => {
+        window.clearTimeout(fallbackCleanupTimer);
+        window.setTimeout(cleanupFrame, 150);
+      },
+      { once: true }
+    );
   };
 
   return (

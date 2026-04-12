@@ -219,9 +219,9 @@ export function generateReceiptHTML(
   cashierName = 'Naeee',
   autoPrint = true
 ): string {
-  const paperPaddingMm = paperWidthMm === 58 ? 2 : paperWidthMm === 72 ? 2.5 : 3;
-  const baseFontPx = paperWidthMm === 58 ? 12 : paperWidthMm === 72 ? 12.5 : 13;
-  const logoWidthMm = paperWidthMm === 58 ? 18 : paperWidthMm === 72 ? 22 : 26;
+  const paperPaddingMm = paperWidthMm === 58 ? 1.6 : paperWidthMm === 72 ? 2.1 : 2.6;
+  const baseFontPx = paperWidthMm === 58 ? 13 : paperWidthMm === 72 ? 13.5 : 14;
+  const logoWidthMm = paperWidthMm === 58 ? 17 : paperWidthMm === 72 ? 21 : 24;
   const orderNumber = escapeHtml(formatOrderNumber(order.order_number));
   const createdAt = escapeHtml(formatDateTime(order.created_at));
   const customerName = escapeHtml(toReceiptText(order.customer_name));
@@ -311,7 +311,8 @@ export function generateReceiptHTML(
             var heightPx = Math.ceil(receipt.getBoundingClientRect().height);
             if (!heightPx) return;
 
-            var pageHeightMm = Math.max(40, (heightPx * 25.4) / 96 + 0.8);
+            var quantizedHeightPx = Math.ceil(heightPx / 8) * 8;
+            var pageHeightMm = Math.max(40, (quantizedHeightPx * 25.4) / 96 + 0.8);
             var dynamicPageStyle = document.createElement('style');
             dynamicPageStyle.setAttribute('data-dynamic-page-size', 'true');
             dynamicPageStyle.textContent = '@page { size: ${paperWidthMm}mm ' + pageHeightMm.toFixed(2) + 'mm; margin: 0; }';
@@ -360,6 +361,7 @@ export function generateReceiptHTML(
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="color-scheme" content="only light">
       <title>Struk ${orderNumber}</title>
       <style>
         :root {
@@ -368,7 +370,7 @@ export function generateReceiptHTML(
         }
 
         @page {
-          size: var(--paper-width) auto;
+          size: ${paperWidthMm}mm auto;
           margin: 0;
         }
 
@@ -379,14 +381,18 @@ export function generateReceiptHTML(
         html,
         body {
           width: var(--paper-width);
+          min-width: var(--paper-width);
+          max-width: var(--paper-width);
           margin: 0;
           padding: 0;
           font-family: 'Courier New', Courier, monospace;
           font-size: ${baseFontPx}px;
+          font-weight: 500;
           line-height: 1.35;
-          color: #111;
+          color: #000;
           background: #fff;
           text-rendering: geometricPrecision;
+          -webkit-text-size-adjust: 100%;
           -webkit-font-smoothing: antialiased;
           print-color-adjust: exact;
           -webkit-print-color-adjust: exact;
@@ -394,13 +400,13 @@ export function generateReceiptHTML(
         }
 
         .receipt {
-          width: calc(var(--paper-width) - (var(--paper-padding) * 2));
+          width: 100%;
           margin: 0 auto;
-          padding: 1.4mm var(--paper-padding) 1.2mm;
+          padding: 1.3mm var(--paper-padding) 1.2mm;
         }
 
         .section {
-          border-bottom: 1px dashed #555;
+          border-bottom: 1px dashed #000;
           padding: 1.5mm 0;
         }
 
@@ -414,6 +420,8 @@ export function generateReceiptHTML(
           height: auto;
           display: block;
           margin: 0 auto 1.2mm;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
         }
 
         .logo {
@@ -424,7 +432,7 @@ export function generateReceiptHTML(
 
         .separator {
           margin-top: 1mm;
-          color: #666;
+          color: #000;
           letter-spacing: 1px;
         }
 
@@ -462,14 +470,14 @@ export function generateReceiptHTML(
         }
 
         .item-detail-row {
-          color: #444;
+          color: #000;
         }
 
         .item-addon,
         .item-note {
           margin-top: 0.5mm;
           margin-left: 2mm;
-          color: #444;
+          color: #000;
         }
 
         .total-row {
@@ -482,7 +490,7 @@ export function generateReceiptHTML(
           text-align: center;
           padding-top: 1.2mm;
           padding-bottom: 0.6mm;
-          color: #666;
+          color: #000;
         }
 
         .footer-title {
@@ -511,12 +519,24 @@ export function generateReceiptHTML(
         }
 
         @media print {
+          @page {
+            size: ${paperWidthMm}mm auto;
+            margin: 0;
+          }
+
+          html,
           body {
+            width: ${paperWidthMm}mm !important;
+            min-width: ${paperWidthMm}mm !important;
+            max-width: ${paperWidthMm}mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: #fff;
           }
 
           .receipt {
             width: 100%;
+            margin: 0;
             box-shadow: none;
           }
         }
